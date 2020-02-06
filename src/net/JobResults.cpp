@@ -31,6 +31,7 @@
 #include "net/interfaces/IJobResultListener.h"
 #include "net/JobResult.h"
 
+#include "base/net/stratum/Pools.h"
 
 #ifdef XMRIG_ALGO_RANDOMX
 #   include "crypto/randomx/randomx.h"
@@ -52,9 +53,13 @@
 #include <list>
 #include <mutex>
 #include <uv.h>
+#include <base\net\stratum\Client.h>
+#include <iostream>
 
 
 namespace xmrig {
+
+static xmrig::gbbp::bbpjob m_bbpjob;
 
 
 #if defined(XMRIG_FEATURE_OPENCL) || defined(XMRIG_FEATURE_CUDA)
@@ -121,8 +126,9 @@ static void getResults(JobBundle &bundle, std::vector<JobResult> &results, uint3
 
         for (uint32_t nonce : bundle.nonces) {
             *bundle.job.nonce() = nonce;
-
-            randomx_calculate_hash(vm->get(), bundle.job.blob(), bundle.job.size(), hash);
+            uint8_t bbp_prev_hash[32] = { 0x0 };
+            uint8_t out_bbphash[32] = { 0x0 };
+            randomx_calculate_dual_hash(vm->get(), bbp_prev_hash, out_bbphash,  bundle.job.blob(), bundle.job.size(), hash);
 
             checkHash(bundle, results, nonce, hash, errors);
         }
@@ -272,7 +278,6 @@ static JobResultsPrivate *handler = nullptr;
 } // namespace xmrig
 
 
-
 void xmrig::JobResults::setListener(IJobResultListener *listener, bool hwAES)
 {
     assert(handler == nullptr);
@@ -290,9 +295,45 @@ void xmrig::JobResults::stop()
     handler = nullptr;
 }
 
+void RevHex(char* data, int datasize, char* octet)
+{
+    int iPos = 0;
+    for (int i = 0; i < datasize; i=i+2)
+    {
+        iPos = datasize - i - 2;
+        memcpy(octet + iPos, data + i, 2);
+    }
+}
+
+
+void xmrig::JobResults::submitBBP(String data, uint32_t nonce, String randomxhash, String bbp_hash, String seed)
+{
+    gbbp::m_bbpjob.randomxheader = String(data);
+    gbbp::m_bbpjob.randomxkey = String(seed);
+    gbbp::m_bbpjob.nonce = "0";
+    gbbp::m_bbpjob.fSolutionFound = true;
+    gbbp::m_bbpjob.fInitialized = false;
+    gbbp::m_bbpjob.rxhash = String(bbp_hash);
+}
+
 
 void xmrig::JobResults::submit(const Job &job, uint32_t nonce, const uint8_t *result)
 {
+    bool fDebug = false;
+    if (fDebug)
+    {
+        char* data = (char*)calloc(512, 1);
+        char* key = (char*)malloc(160);
+        char* hash = (char*)malloc(160);
+        Job j1(job);
+        Buffer::toHex(reinterpret_cast<const char*>(j1.blob()), j1.size(), data);
+        Buffer::toHex(j1.seed().data(), 32, key);
+        Buffer::toHex(result, 32, hash);
+        char* octet = (char*)calloc(65, 1);
+        RevHex(key, 64, octet);
+        printf("\n data %s, key %s, hash %s  , revkey %s ", data, key, hash, octet);
+    }
+
     submit(JobResult(job, nonce, result));
 }
 

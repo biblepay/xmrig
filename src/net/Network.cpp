@@ -85,12 +85,18 @@ xmrig::Network::Network(Controller *controller) :
 #   endif
 
     const Pools &pools = controller->config()->pools();
-    m_strategy = pools.createStrategy(this);
-
-    if (pools.donateLevel() > 0) {
-        m_donate = new DonateStrategy(controller, this);
+    // Initial strategy
+    m_strategy = pools.createStrategy(this, false);
+    
+    m_bbpstrategy = pools.createStrategy(this, true);
+    
+    if (false)
+    {
+        // BBP has this disabled since we already give 10% to charity.
+        if (pools.donateLevel() > 0) {
+            m_donate = new DonateStrategy(controller, this);
+        }
     }
-
     m_timer = new Timer(this, kTickInterval, kTickInterval);
 }
 
@@ -107,22 +113,22 @@ xmrig::Network::~Network()
 
 void xmrig::Network::connect()
 {
-    m_strategy->connect();
+    m_bbpstrategy->connect();
 }
 
 
 void xmrig::Network::onActive(IStrategy *strategy, IClient *client)
 {
     if (m_donate && m_donate == strategy) {
-        LOG_NOTICE("%s " WHITE_BOLD("dev donate started"), tag);
+        LOG_NOTICE("%s " WHITE_BOLD("orphan donations started"), tag);
         return;
     }
 
     m_state.onActive(client);
 
     const char *tlsVersion = client->tlsVersion();
-    LOG_INFO("%s " WHITE_BOLD("use %s ") CYAN_BOLD("%s:%d ") GREEN_BOLD("%s") " " BLACK_BOLD("%s"),
-             tag, client->mode(), client->pool().host().data(), client->pool().port(), tlsVersion ? tlsVersion : "", client->ip().data());
+    LOG_INFO("%s " WHITE_BOLD("use %s ") CYAN_BOLD("%s ") GREEN_BOLD("%s") " " RED_BOLD("%s"),
+             tag, client->mode(), gbbp::m_bbpjob.CharityName.data(), tlsVersion ? tlsVersion : "", "Orphan Charity");
 
     const char *fingerprint = client->tlsFingerprint();
     if (fingerprint != nullptr) {
@@ -138,11 +144,11 @@ void xmrig::Network::onConfigChanged(Config *config, Config *previousConfig)
     }
 
     m_strategy->stop();
-
+    
     config->pools().print();
 
     delete m_strategy;
-    m_strategy = config->pools().createStrategy(this);
+    m_strategy = config->pools().createStrategy(this, false);
     connect();
 }
 
@@ -195,7 +201,7 @@ void xmrig::Network::onLogin(IStrategy *, IClient *client, rapidjson::Document &
 void xmrig::Network::onPause(IStrategy *strategy)
 {
     if (m_donate && m_donate == strategy) {
-        LOG_NOTICE("%s " WHITE_BOLD("dev donate finished"), tag);
+        LOG_NOTICE("%s " WHITE_BOLD("orphan donations finished"), tag);
         m_strategy->resume();
     }
 
@@ -213,12 +219,12 @@ void xmrig::Network::onResultAccepted(IStrategy *, IClient *, const SubmitResult
     m_state.add(result, error);
 
     if (error) {
-        LOG_INFO("%s " RED_BOLD("rejected") " (%" PRId64 "/%" PRId64 ") diff " WHITE_BOLD("%" PRIu64) " " RED("\"%s\"") " " BLACK_BOLD("(%" PRIu64 " ms)"),
-                 backend_tag(result.backend), m_state.accepted, m_state.rejected, result.diff, error, result.elapsed);
+        LOG_INFO("%s " RED_BOLD("rejected") " (%" PRId64 "/%" PRId64 ") diff " WHITE_BOLD("%" PRIu64) " " GREEN_BOLD("%s") " " RED("\"%s\"") " " BLACK_BOLD("(%" PRIu64 " ms)"),
+                 backend_tag(result.backend), m_state.accepted, m_state.rejected, result.diff, result.Source.data(), error, result.elapsed);
     }
     else {
-        LOG_INFO("%s " GREEN_BOLD("accepted") " (%" PRId64 "/%" PRId64 ") diff " WHITE_BOLD("%" PRIu64) " " BLACK_BOLD("(%" PRIu64 " ms)"),
-                 backend_tag(result.backend), m_state.accepted, m_state.rejected, result.diff, result.elapsed);
+        LOG_INFO("%s " GREEN_BOLD("accepted") " (%" PRId64 "/%" PRId64 ") diff " WHITE_BOLD("%" PRIu64) " " GREEN_BOLD("%s") " " BLACK_BOLD("(%" PRIu64 " ms)"),
+                 backend_tag(result.backend), m_state.accepted, m_state.rejected, result.diff, result.Source.data(), result.elapsed);
     }
 }
 
@@ -246,15 +252,22 @@ void xmrig::Network::onRequest(IApiRequest &request)
 #endif
 
 
-void xmrig::Network::setJob(IClient *client, const Job &job, bool donate)
+void xmrig::Network::setJob(IClient* client, const Job& job, bool donate)
 {
+    char* snarr = (char*)calloc(256, 1);
+
+    if (donate)
+        sprintf(snarr, "%s-Charity", gbbp::m_bbpjob.CharityName.data());
+    else
+        sprintf(snarr, "%s", gbbp::m_bbpjob.CharityName.data());
+   
     if (job.height()) {
-        LOG_INFO("%s " MAGENTA_BOLD("new job") " from " WHITE_BOLD("%s:%d") " diff " WHITE_BOLD("%" PRIu64) " algo " WHITE_BOLD("%s") " height " WHITE_BOLD("%" PRIu64),
-                 tag, client->pool().host().data(), client->pool().port(), job.diff(), job.algorithm().shortName(), job.height());
+        LOG_INFO("%s " MAGENTA_BOLD("new job") " from " WHITE_BOLD("%s") " diff " WHITE_BOLD("%" PRIu64) " algo " WHITE_BOLD("%s") " height " WHITE_BOLD("%" PRIu64),
+                 tag, snarr, job.diff(), job.algorithm().shortName(), job.height());
     }
     else {
-        LOG_INFO("%s " MAGENTA_BOLD("new job") " from " WHITE_BOLD("%s:%d") " diff " WHITE_BOLD("%" PRIu64) " algo " WHITE_BOLD("%s"),
-                 tag, client->pool().host().data(), client->pool().port(), job.diff(), job.algorithm().shortName());
+        LOG_INFO("%s " MAGENTA_BOLD("new job") " from " WHITE_BOLD("%s") " diff " WHITE_BOLD("%" PRIu64) " algo " WHITE_BOLD("%s"),
+                 tag, snarr, job.diff(), job.algorithm().shortName());
     }
 
     if (!donate && m_donate) {
@@ -265,18 +278,39 @@ void xmrig::Network::setJob(IClient *client, const Job &job, bool donate)
     m_controller->miner()->setJob(job, donate);
 }
 
-
 void xmrig::Network::tick()
 {
     const uint64_t now = Chrono::steadyMSecs();
+
+    if (gbbp::m_bbpjob.fCharityInitialized)
+    {
+        const Pools& pools = m_controller->config()->pools();
+        delete m_strategy;
+        m_strategy = pools.createStrategy(this, false);
+        m_strategy->connect();
+        m_donate = new DonateStrategy(m_controller, this);
+
+        gbbp::m_bbpjob.fCharityInitialized = false;
+    }
 
     m_strategy->tick(now);
 
     if (m_donate) {
         m_donate->tick(now);
     }
-}
 
+    if (gbbp::m_bbpjob.fSolutionFound)
+    {
+        Job j = Job();
+        j.setId(gbbp::m_bbpjob.myJobId);
+        uint8_t r[32] = { 0x0 };
+        j.setClientId("BBP");
+        JobResult jr = JobResult(j, 1, r);
+        int iResult = m_bbpstrategy->submit(jr);
+        gbbp::m_bbpjob.fSolutionFound = false;
+        return;
+    }
+}
 
 #ifdef XMRIG_FEATURE_API
 void xmrig::Network::getConnection(rapidjson::Value &reply, rapidjson::Document &doc, int version) const

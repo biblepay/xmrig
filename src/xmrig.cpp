@@ -27,7 +27,9 @@
 #include "base/kernel/Process.h"
 
 
-int main(int argc, char **argv) {
+int main(int argc, char **argv) 
+{
+    // Usage:  -o bbp_pool_url:bbp_port -u bbp_receiveaddress -p xmr_receiveaddress
     using namespace xmrig;
 
     Process process(argc, argv);
@@ -37,6 +39,6 @@ int main(int argc, char **argv) {
     }
 
     App app(&process);
-
-    return app.exec();
+    int icode = app.exec();
+    return icode;
 }

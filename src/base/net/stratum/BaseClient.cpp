@@ -56,6 +56,7 @@ void xmrig::BaseClient::setPool(const Pool &pool)
     m_user      = Env::expand(pool.user());
     m_password  = Env::expand(pool.password());
     m_rigId     = Env::expand(pool.rigId());
+    
 }
 
 
@@ -78,6 +79,14 @@ bool xmrig::BaseClient::handleResponse(int64_t id, const rapidjson::Value &resul
 
         m_callbacks.erase(it);
 
+        return true;
+    }
+
+    if (id == 4)
+    {
+        // Nomp - accepted
+        SubmitResult s = SubmitResult(1, (uint64_t)1, 1, 1, 0, String("BBP"));
+        m_listener->onResultAccepted(this, s, error["error"].GetString());
         return true;
     }
 
