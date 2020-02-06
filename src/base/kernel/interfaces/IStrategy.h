@@ -41,7 +41,6 @@ class IStrategy
 {
 public:
     virtual ~IStrategy() = default;
-
     virtual bool isActive() const                      = 0;
     virtual IClient *client() const                    = 0;
     virtual int64_t submit(const JobResult &result)    = 0;

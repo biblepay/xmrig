@@ -133,6 +133,7 @@ void xmrig::BaseConfig::printVersions()
 #   endif
 
     Log::print(GREEN_BOLD(" * ") WHITE_BOLD("%-13s") CYAN_BOLD("%s/%s") WHITE_BOLD(" %s"), "ABOUT", APP_NAME, APP_VERSION, buf);
+    Log::print(GREEN_BOLD(" * ") RED_BOLD("%s"), "BBP + XMR - Welcome to the future of orphan charity");
 
     std::string libs;
 
