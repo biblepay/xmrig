@@ -65,7 +65,6 @@ bool xmrig::RxCache::init(const Buffer &seed)
 
     if (m_cache) {
         randomx_init_cache(m_cache, m_seed.data(), m_seed.size());
-
         return true;
     }
 
