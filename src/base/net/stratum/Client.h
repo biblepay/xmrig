@@ -51,6 +51,7 @@ using BIO = struct bio_st;
 namespace xmrig {
 
 
+
 class IClientListener;
 class JobResult;
 
@@ -64,7 +65,7 @@ public:
     constexpr static uint64_t kResponseTimeout  = 20 * 1000;
     constexpr static size_t kInputBufferSize    = 1024 * 16;
     constexpr static size_t kMaxSendBufferSize  = 1024 * 16;
-
+    
     Client(int id, const char *agent, IClientListener *listener);
     ~Client() override;
 
@@ -106,6 +107,10 @@ private:
     void parse(char *line, size_t len);
     void parseExtensions(const rapidjson::Value &result);
     void parseNotification(const char *method, const rapidjson::Value &params, const rapidjson::Value &error);
+    bool xmrig::Client::MiningNotify_BBP(const char* method, const rapidjson::Value& params);
+    bool xmrig::Client::MiningSetDifficulty(const char* method, const rapidjson::Value& params);
+    bool xmrig::Client::MiningSetAltruism(const char* method, const rapidjson::Value& params);
+
     void parseResponse(int64_t id, const rapidjson::Value &result, const rapidjson::Value &error);
     void ping();
     void read(ssize_t nread);

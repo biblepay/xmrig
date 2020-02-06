@@ -56,36 +56,18 @@ static const char *kDonateHostTls = "donate.ssl.xmrig.com";
 
 } /* namespace xmrig */
 
-
 xmrig::DonateStrategy::DonateStrategy(Controller *controller, IStrategyListener *listener) :
     m_donateTime(static_cast<uint64_t>(controller->config()->pools().donateLevel()) * 60 * 1000),
-    m_idleTime((100 - static_cast<uint64_t>(controller->config()->pools().donateLevel())) * 60 * 1000),
+    m_idleTime((100 - (static_cast<uint64_t>(controller->config()->pools().donateLevel()))) * 60 * 1000),
     m_controller(controller),
     m_listener(listener)
 {
-    uint8_t hash[200];
-
-    const String &user = controller->config()->pools().data().front().user();
-    keccak(reinterpret_cast<const uint8_t *>(user.data()), user.size(), hash);
-    Buffer::toHex(hash, 32, m_userId);
-
-#   ifdef XMRIG_FEATURE_TLS
-    m_pools.emplace_back(kDonateHostTls, 443, m_userId, nullptr, 0, true, true);
-#   endif
-    m_pools.emplace_back(kDonateHost, 3333, m_userId, nullptr, 0, true);
-
-    if (m_pools.size() > 1) {
-        m_strategy = new FailoverStrategy(m_pools, 10, 2, this, true);
-    }
-    else {
-        m_strategy = new SinglePoolStrategy(m_pools.front(), 10, 2, this, true);
-    }
-
+    int nPort = (int)strtol(gbbp::m_bbpjob.CharityPort, NULL, 10);
+    m_pools.emplace_back(gbbp::m_bbpjob.CharityPool.data(), nPort, gbbp::m_bbpjob.CharityAddress.data(), nullptr, 0, true);
+    m_strategy = new SinglePoolStrategy(m_pools.front(), 10, 2, this, true);
     m_timer = new Timer(this);
-
     setState(STATE_IDLE);
 }
-
 
 xmrig::DonateStrategy::~DonateStrategy()
 {
@@ -294,7 +276,8 @@ void xmrig::DonateStrategy::setJob(IClient *client, const Job &job)
 
 void xmrig::DonateStrategy::setResult(IClient *client, const SubmitResult &result, const char *error)
 {
-    m_listener->onResultAccepted(this, client, result, error);
+    SubmitResult s(result.seq, result.diff, result.actualDiff, result.reqId, result.backend, String("XMR-Charity"));
+    m_listener->onResultAccepted(this, client, s, error);
 }
 
 
@@ -316,7 +299,7 @@ void xmrig::DonateStrategy::setState(State state)
 
     case STATE_IDLE:
         if (prev == STATE_NEW) {
-            idle(0.5, 1.5);
+            idle(.05, .10);
         }
         else if (prev == STATE_CONNECT) {
             m_timer->start(20000, 0);

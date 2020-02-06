@@ -47,13 +47,14 @@
 void xmrig::BaseTransform::load(JsonChain &chain, Process *process, IConfigTransform &transform)
 {
     using namespace rapidjson;
-
+    int argc = process->arguments().argc();
+    char** argv = process->arguments().argv();
     int key;
-    int argc    = process->arguments().argc();
-    char **argv = process->arguments().argv();
-
     Document doc(kObjectType);
-
+    // In case we need to re-load the document:
+    int* idx1 = (int*)99;
+    key = getopt_long(argc, argv, short_options, options, idx1);
+    
     while (true) {
         key = getopt_long(argc, argv, short_options, options, nullptr);
         if (key < 0) {

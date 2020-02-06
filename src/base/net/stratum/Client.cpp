@@ -56,6 +56,7 @@
 #ifdef _MSC_VER
 #   define strncasecmp(x,y,z) _strnicmp(x,y,z)
 #endif
+#include <base\net\stratum\Pools.h>
 
 
 namespace xmrig {
@@ -177,11 +178,20 @@ int64_t xmrig::Client::send(const rapidjson::Value &obj)
     return send(size + 1);
 }
 
+static inline void be32enc(void* pp, uint32_t x)
+{
+    uint8_t* p = (uint8_t*)pp;
+    p[3] = x & 0xff;
+    p[2] = (x >> 8) & 0xff;
+    p[1] = (x >> 16) & 0xff;
+    p[0] = (x >> 24) & 0xff;
+}
+
 
 int64_t xmrig::Client::submit(const JobResult &result)
 {
 #   ifndef XMRIG_PROXY_PROJECT
-    if (result.clientId != m_rpcId) {
+    if (result.clientId != m_rpcId && result.clientId != "BBP") {
         return -1;
     }
 #   endif
@@ -194,10 +204,8 @@ int64_t xmrig::Client::submit(const JobResult &result)
 #   else
     char *nonce = m_sendBuf.data();
     char *data  = m_sendBuf.data() + 16;
-
     Buffer::toHex(reinterpret_cast<const char*>(&result.nonce), 4, nonce);
     nonce[8] = '\0';
-
     Buffer::toHex(result.result(), 32, data);
     data[64] = '\0';
 #   endif
@@ -206,7 +214,31 @@ int64_t xmrig::Client::submit(const JobResult &result)
     auto &allocator = doc.GetAllocator();
 
     Value params(kObjectType);
-    params.AddMember("id",     StringRef(m_rpcId.data()), allocator);
+
+    if (result.clientId == "BBP")
+    {
+        gbbp::m_bbpjob.fInitialized = false;
+        m_sendBuf.clear();
+        int n1 = sprintf(m_sendBuf.data(), "{\"id\":2, \"method\": \"mining.authorize\", \"params\": [\"%s\", \"%s\"]}\n", m_user.data(), m_password.data());
+        
+
+        m_sendBuf.clear();
+        int n3 = sprintf(m_sendBuf.data(),
+            "{\"id\":4, \"method\": \"mining.submit\", \"params\": [\"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\"]}\n",
+            gbbp::m_bbpjob.userid.data(), gbbp::m_bbpjob.myJobId.data(),
+            gbbp::m_bbpjob.randomxheader.data(),
+            gbbp::m_bbpjob.jobtime.data(), gbbp::m_bbpjob.randomxkey.data(), gbbp::m_bbpjob.rxhash.data());
+        gbbp::m_bbpjob.fInitialized = false;
+        send(n3);
+
+        m_sendBuf.clear();
+        int n2 = sprintf(m_sendBuf.data(), "{\"id\": 1, \"method\": \"mining.subscribe\", \"params\": []}\n");
+        return send(n2);
+    }
+    else
+    {
+        params.AddMember("id", StringRef(m_rpcId.data()), allocator);
+    }
     params.AddMember("job_id", StringRef(result.jobId.data()), allocator);
     params.AddMember("nonce",  StringRef(nonce), allocator);
     params.AddMember("result", StringRef(data), allocator);
@@ -218,9 +250,9 @@ int64_t xmrig::Client::submit(const JobResult &result)
     JsonRequest::create(doc, m_sequence, "submit", params);
 
 #   ifdef XMRIG_PROXY_PROJECT
-    m_results[m_sequence] = SubmitResult(m_sequence, result.diff, result.actualDiff(), result.id, 0);
+    m_results[m_sequence] = SubmitResult(m_sequence, result.diff, result.actualDiff(), result.id, 0, "XMR");
 #   else
-    m_results[m_sequence] = SubmitResult(m_sequence, result.diff, result.actualDiff(), 0, result.backend);
+    m_results[m_sequence] = SubmitResult(m_sequence, result.diff, result.actualDiff(), 0, result.backend, "XMR");
 #   endif
 
     return send(doc);
@@ -358,7 +390,7 @@ bool xmrig::Client::parseJob(const rapidjson::Value &params, int *code)
         *code = 2;
         return false;
     }
-
+    
     Job job(has<EXT_NICEHASH>(), m_pool.algorithm(), m_rpcId);
 
     if (!job.setId(params["job_id"].GetString())) {
@@ -414,6 +446,8 @@ bool xmrig::Client::parseJob(const rapidjson::Value &params, int *code)
         return false;
     }
 
+    job.initialized = true;
+    
     m_job.setClientId(m_rpcId);
 
     if (m_job != job) {
@@ -541,7 +575,7 @@ int xmrig::Client::resolve(const String &host)
 
         return 1;
     }
-
+    LOG_DEBUG("Unable to resolve host %s", host);
     return 0;
 }
 
@@ -549,7 +583,7 @@ int xmrig::Client::resolve(const String &host)
 int64_t xmrig::Client::send(size_t size)
 {
     LOG_DEBUG("[%s] send (%d bytes): \"%.*s\"", url(), size, static_cast<int>(size) - 1, m_sendBuf.data());
-
+   
 #   ifdef XMRIG_FEATURE_TLS
     if (isTLS()) {
         if (!m_tls->send(m_sendBuf.data(), size)) {
@@ -622,11 +656,37 @@ void xmrig::Client::login()
 
     Document doc(kObjectType);
     auto &allocator = doc.GetAllocator();
-
     Value params(kObjectType);
-    params.AddMember("login", m_user.toJSON(),     allocator);
-    params.AddMember("pass",  m_password.toJSON(), allocator);
-    params.AddMember("agent", StringRef(m_agent),         allocator);
+    bool fBBP = strlen(m_user) == 34 ? true : false;
+    params.AddMember("login", m_user.toJSON(), allocator);
+    params.AddMember("pass", m_password.toJSON(), allocator);
+    if (!fBBP)
+            params.AddMember("agent", StringRef(m_agent), allocator);
+    
+    if (fBBP)
+    {
+        if (NULL == gbbp::m_bbpjob.CharityAddress)
+        {
+            m_sendBuf.clear();
+            int n4 = sprintf(m_sendBuf.data(), "{\"id\":7, \"method\": \"mining.altruism\", \"params\": [\"%s\"]}\n", m_user.data());
+            send(n4);
+        }
+
+        m_sendBuf.clear();
+        int n1 = sprintf(m_sendBuf.data(), "{\"id\":2, \"method\": \"mining.authorize\", \"params\": [\"%s\", \"%s\"]}\n", m_user.data(), m_password.data());
+        if (gbbp::m_bbpjob.userid == NULL)
+        {
+            gbbp::m_bbpjob.userid = String(m_user.data());
+            gbbp::m_bbpjob.XMRAddress = String(m_password.data());
+        }
+        send(n1);
+        
+        // SUBSCRIBE
+        m_sendBuf.clear();
+        int n2 = sprintf(m_sendBuf.data(), "{\"id\": 1, \"method\": \"mining.subscribe\", \"params\": []}\n");
+        send(n2);
+        return;
+    }
 
     if (!m_rigId.isNull()) {
         params.AddMember("rigid", m_rigId.toJSON(), allocator);
@@ -634,7 +694,14 @@ void xmrig::Client::login()
 
     m_listener->onLogin(this, doc, params);
 
-    JsonRequest::create(doc, 1, "login", params);
+    if (fBBP)
+    {
+        JsonRequest::create(doc, 1, "mining.authorize", params);
+    }
+    else
+    {
+        JsonRequest::create(doc, 1, "login", params);
+    }
 
     send(doc);
 }
@@ -662,17 +729,16 @@ void xmrig::Client::onClose()
 void xmrig::Client::parse(char *line, size_t len)
 {
     startTimeout();
-
+    
     LOG_DEBUG("[%s] received (%d bytes): \"%.*s\"", url(), len, static_cast<int>(len), line);
-
-    if (len < 32 || line[0] != '{') {
+    
+    if (len < 16 || line[0] != '{') {
         if (!isQuiet()) {
             LOG_ERR("[%s] JSON decode failed", url());
         }
 
         return;
     }
-
     rapidjson::Document doc;
     if (doc.ParseInsitu(line).HasParseError()) {
         if (!isQuiet()) {
@@ -687,6 +753,7 @@ void xmrig::Client::parse(char *line, size_t len)
     }
 
     const rapidjson::Value &id = doc["id"];
+
     if (id.IsInt64()) {
         parseResponse(id.GetInt64(), doc["result"], doc["error"]);
     }
@@ -737,8 +804,113 @@ void xmrig::Client::parseExtensions(const rapidjson::Value &result)
 }
 
 
+bool hex2bin(unsigned char* p, const char* hexstr, size_t len)
+{
+    char hex_byte[3];
+    char* ep;
+
+    hex_byte[2] = '\0';
+
+    while (*hexstr && len) {
+        if (!hexstr[1]) {
+            return false;
+        }
+        hex_byte[0] = hexstr[0];
+        hex_byte[1] = hexstr[1];
+        *p = (unsigned char)strtol(hex_byte, &ep, 16);
+        if (*ep) {
+            return false;
+        }
+        p++;
+        hexstr += 2;
+        len--;
+    }
+
+    return (len == 0 && *hexstr == 0) ? true : false;
+}
+
+void diff_to_target(uint32_t *target, double diff)
+{
+    uint64_t m;
+    int k;
+
+    for (k = 6; k > 0 && diff > 1.0; k--)
+        diff /= 4294967296.0;
+    m = 4294901760.0 / diff;
+    if (m == 0 && k == 6)
+        memset(target, 0xff, 32);
+    else {
+        memset(target, 0, 32);
+        target[k] = (uint32_t)m;
+        target[k + 1] = (uint32_t)(m >> 32);
+    }
+}
+
+bool xmrig::Client::MiningSetDifficulty(const char* method, const rapidjson::Value& params)
+{
+    const char* mydiff = (char*)calloc(64, 1);
+    mydiff = params[0].GetString();
+    double nDiff = (double)strtol(mydiff, NULL, 16);
+    
+    for (int i = 0; i < 8; i++)
+        gbbp::m_bbpjob.target[i] = { 0x0 };
+    
+    gbbp::m_bbpjob.difficulty = nDiff;
+    return true;
+}
+
+bool xmrig::Client::MiningSetAltruism(const char* method, const rapidjson::Value& params)
+{
+    const char* pool1 = params[0].GetString();
+    const char* port1 = params[1].GetString();
+    const char* pool1CharityAddress = params[2].GetString();
+    const char* charityName = params[3].GetString();
+
+    gbbp::m_bbpjob.CharityPool = String(pool1);
+    gbbp::m_bbpjob.CharityPort = String(port1);
+    gbbp::m_bbpjob.CharityAddress = String(pool1CharityAddress);
+    gbbp::m_bbpjob.CharityName = String(charityName);
+    gbbp::m_bbpjob.fCharityInitialized = true;
+    
+    return true;
+}
+
+bool xmrig::Client::MiningNotify_BBP(const char* method, const rapidjson::Value& params)
+{
+    int merkle_count, i;
+    const char* job_id = params["params"][0].GetString();
+    const char* prevhash = params["params"][1].GetString();
+    const char* coinbase = params["params"][2].GetString();
+    char* prev_block_hash = (char*)calloc(65, 1); 
+    const char* merkle_root = params["params"][4].GetString();
+    const char* version = params["params"][5].GetString();
+    const char* nbits = params["params"][6].GetString();
+    const char* ntime = params["params"][7].GetString();
+    const char* clean = params["params"][8].GetString();
+    const char* nPrevBlockTime = params["params"][9].GetString();
+    // From nomp to the miner, via stratum:
+
+    if (!job_id || !nbits || !ntime || !nPrevBlockTime ||
+         strlen(nbits) != 8 || strlen(ntime) != 8 || strlen(nPrevBlockTime) != 8) 
+    {
+        printf("jobid %s, prevhash %s, version %s, nbits %s, ntime %s, nPrevBlockTime %s , prevhash %s \n", job_id, prevhash, "2", nbits, ntime, nPrevBlockTime, prevhash);
+    }
+    
+    if (strlen(String(job_id)) > 0 && strlen(String(coinbase)) > 64)
+    {
+        gbbp::m_bbpjob.myJobId = String(job_id);
+        gbbp::m_bbpjob.sBits = String(nbits);
+        gbbp::m_bbpjob.jobtime = String(ntime);
+        memcpy(prev_block_hash, coinbase + 8, 64);
+        Buffer::fromHex(prev_block_hash, 64, gbbp::m_bbpjob.prevblockhash);
+        gbbp::m_bbpjob.fInitialized = true;
+        return true;
+    }
+}
+
 void xmrig::Client::parseNotification(const char *method, const rapidjson::Value &params, const rapidjson::Value &error)
 {
+
     if (error.IsObject()) {
         if (!isQuiet()) {
             LOG_ERR("[%s] error: \"%s\", code: %d", url(), error["message"].GetString(), error["code"].GetInt());
@@ -762,6 +934,22 @@ void xmrig::Client::parseNotification(const char *method, const rapidjson::Value
         return;
     }
 
+    if (strcmp(method, "mining.notify") == 0)
+    {
+        MiningNotify_BBP(method, params);
+        return;
+    }
+    if (strcmp(method, "mining.set_difficulty") == 0)
+    {
+        MiningSetDifficulty(method, params);
+        return;
+    }
+
+    if (strcmp(method, "mining.set_altruism") == 0)
+    {
+        MiningSetAltruism(method, params);
+        return;
+    }
     LOG_WARN("[%s] unsupported method: \"%s\"", url(), method);
 }
 
@@ -782,7 +970,7 @@ void xmrig::Client::parseResponse(int64_t id, const rapidjson::Value &result, co
         if (m_id == 1 || isCriticalError(message)) {
             close();
         }
-
+        
         return;
     }
 

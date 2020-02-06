@@ -41,9 +41,17 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "crypto/randomx/jit_compiler_a64_static.hpp"
 #endif
 
-#include "backend/cpu/Cpu.h"
 
+#include "backend/cpu/Cpu.h"
 #include <cassert>
+
+
+extern "C"
+{
+#include "crypto/cn/c_blake256.h"
+}
+
+
 
 RandomX_ConfigurationWownero::RandomX_ConfigurationWownero()
 {
@@ -458,7 +466,26 @@ extern "C" {
 		delete machine;
 	}
 
-	void randomx_calculate_hash(randomx_vm *machine, const void *input, size_t inputSize, void *output) {
+	static inline uint8_t hf_bin2hex(uint8_t c)
+	{
+		if (c <= 0x9) {
+			return '0' + c;
+		}
+
+		return 'a' - 0xA + c;
+	}
+	
+	void toHex(uint8_t in[], size_t size, char* out)
+	{
+		for (size_t i = 0; i < size; i++) {
+			out[i * 2] = hf_bin2hex((in[i] & 0xF0) >> 4);
+			out[i * 2 + 1] = hf_bin2hex(in[i] & 0x0F);
+		}
+	}
+	
+	static bool fDualHashingEnabled = true;
+	void randomx_calculate_dual_hash(randomx_vm *machine, uint8_t bbp_prev_hash[], uint8_t out_bbphash[], const void *input, size_t inputSize, void *output) 
+	{
 		assert(machine != nullptr);
 		assert(inputSize == 0 || input != nullptr);
 		assert(output != nullptr);
@@ -471,7 +498,32 @@ extern "C" {
 			rx_blake2b(tempHash, sizeof(tempHash), machine->getRegisterFile(), sizeof(randomx::RegisterFile), nullptr, 0);
 		}
 		machine->run(&tempHash);
-		machine->getFinalResult(output, RANDOMX_HASH_SIZE);
+		if (!fDualHashingEnabled)
+		{
+			machine->getFinalResult(output, RANDOMX_HASH_SIZE);
+		}
+		else
+		{
+			// BiblePay's randomx hash is a 160 byte solution to an equation.  
+			// Part A of the equation is the solution to an actual RandomX hash in any RandomX coin (or pool), while part B is the BlakeHash(BBP_PrevBlockHash + RandomX Hash) equals < BBP_Current_Block_Difficulty
+			// Note that part B must contain the prior BBP blockhash to solve.
+			uint8_t uOut[32];
+			// First get the RandomX VM's final hash of the RX-coin's header:
+			machine->getFinalResult(uOut, RANDOMX_HASH_SIZE);
+			memcpy(output, uOut, RANDOMX_HASH_SIZE);
+			// Construct the equations output buffer (must be zero padded as we enforce the zeroes)
+			uint8_t uBBPIn[160] = { 0x0 };
+			// The BBP Previous block hash goes in position 0-31, then the RandomX hash that solves the BBP Equation in 32-64:
+			memcpy(uBBPIn + 32, uOut, 32);
+			memcpy(uBBPIn, bbp_prev_hash, 32);
+			// We leave some extra space between 65-160 in case RandomX hashes enlarge, or the solution enlarges later.
+			// Next, we blake hash the output, resulting in the Biblepay block hash for the next best block:
+			// The blakehash difficulty target must be less than the BBP diff target of the *next block*
+			// Note: Since we require the original RandomX hash to be proven, and the BBP prior blockhash must be in the equation, this prevents pre-mining BBP blocks.
+			// This also ensures BBPs chain is equally as hard to mine with a standalone RandomX miner (than the dual hash affords).
+			blake256_hash(out_bbphash, uBBPIn, 160);
+			// This blakehash is what BBP uses to secure the chain as of March 2020.
+		}
 	}
 
 	void randomx_calculate_hash_first(randomx_vm* machine, uint64_t (&tempHash)[8], const void* input, size_t inputSize) {
@@ -479,7 +531,8 @@ extern "C" {
 		machine->initScratchpad(tempHash);
 	}
 
-	void randomx_calculate_hash_next(randomx_vm* machine, uint64_t (&tempHash)[8], const void* nextInput, size_t nextInputSize, void* output) {
+	void randomx_calculate_hash_next(randomx_vm* machine, uint64_t (&tempHash)[8], const void* nextInput, size_t nextInputSize, void* output) 
+	{
 		machine->resetRoundingMode();
 		for (uint32_t chain = 0; chain < RandomX_CurrentConfig.ProgramCount - 1; ++chain) {
 			machine->run(&tempHash);

@@ -27,7 +27,6 @@
 #include <cassert>
 #include <thread>
 
-
 #include "backend/cpu/CpuWorker.h"
 #include "core/Miner.h"
 #include "crypto/cn/CnCtx.h"
@@ -47,9 +46,9 @@
 namespace xmrig {
 
 static constexpr uint32_t kReserveCount = 32768;
+xmrig::gbbp::bbpjob m_bbpjob;
 
 } // namespace xmrig
-
 
 
 template<size_t N>
@@ -169,10 +168,84 @@ bool xmrig::CpuWorker<N>::selfTest()
     return false;
 }
 
+bool fulltest2(uint8_t hash[], uint8_t target[])
+{
+    int i = 0;
+    bool rc = true;
+
+    for (i = 31; i >= 0; i--) {
+        if (hash[i] > target[i]) {
+            rc = false;
+            break;
+        }
+        if (hash[i] < target[i]) {
+            rc = true;
+            break;
+        }
+    }
+
+    return rc;
+}
+
+double FullTest3(uint8_t hash[])
+{
+    // Converts the RandomX solution hash over to the original bitcoin difficulty level
+    uint64_t nAdjHash = *reinterpret_cast<uint64_t*>(hash + 24);
+    double nDiff = 0xFFFFFFFFFFFFULL / (nAdjHash + .01);
+    return nDiff;
+}
+
+
+void phex(uint8_t data[], char *name)
+{
+    char* d1 = (char*)malloc(160);
+    xmrig::Buffer::toHex(reinterpret_cast<const char*>(data), 32, d1);
+    printf(" H:%s Val:%s ", name, d1);
+}
+
+void phex(uint64_t data[], char* name)
+{
+    char* d1 = (char*)malloc(160);
+    xmrig::Buffer::toHex(reinterpret_cast<const char*>(data), 32, d1);
+    printf(" H:%s Val:%s ", name, d1);
+}
+
+static void R256b(uint8_t toSwap[], uint8_t swapped[])
+{
+    for (int i = 0; i < 32; i++)
+    {
+        int iSource = 31 - i;
+        swapped[i] = toSwap[iSource];
+    }
+}
+
+static void ConvertH8TO32(uint8_t h1[], uint32_t h2[])
+{
+    int v = 0;
+    for (int i = 0; i < 8; i++)
+    {
+        v = i * 4;
+        uint32_t i32 = (h1[v + 3] << 24) | (h1[v + 2] << 16) | (h1[v + 1] << 8) | h1[v + 0];
+        h2[i] = i32;
+    }
+}
+
 
 template<size_t N>
 void xmrig::CpuWorker<N>::start()
 {
+    // BiblePay vectors
+    uint32_t finalhash[8];
+    uint8_t out_bbphash[32] = { 0x0 };
+    uint8_t bbp_prev_hash[32] = { 0x0 };
+    uint8_t myjobtarget[32] = { 0x0 };
+    double nDifficulty = 0;
+    double nActualDifficulty = 0;
+    uint64_t my64target = 0;
+    bool fSolved = false;
+    bool fDebug = false;
+    // End of BiblePay vectors
+
     while (Nonce::sequence(Nonce::CPU) > 0) {
         if (Nonce::isPaused()) {
             do {
@@ -191,8 +264,8 @@ void xmrig::CpuWorker<N>::start()
 
 #       ifdef XMRIG_ALGO_RANDOMX
         bool first = true;
-        uint64_t tempHash[8] = {};
-
+        alignas(16) uint64_t tempHash[8] = {0x0};
+        uint64_t mlHash[8] = {};
         // RandomX is faster, we don't need to store stats so often
         if (m_job.currentJob().algorithm().family() == Algorithm::RANDOM_X) {
             storeStatsMask = 63;
@@ -205,13 +278,13 @@ void xmrig::CpuWorker<N>::start()
             }
 
             const Job &job = m_job.currentJob();
-
             if (job.algorithm().l3() != m_algorithm.l3()) {
                 break;
             }
 
             uint32_t current_job_nonces[N];
-            for (size_t i = 0; i < N; ++i) {
+            for (size_t i = 0; i < N; ++i) 
+            {
                 current_job_nonces[i] = *m_job.nonce(i);
             }
 
@@ -219,10 +292,48 @@ void xmrig::CpuWorker<N>::start()
             if (job.algorithm().family() == Algorithm::RANDOM_X) {
                 if (first) {
                     first = false;
-                    randomx_calculate_hash_first(m_vm->get(), tempHash, m_job.blob(), job.size());
                 }
-                m_job.nextRound(kReserveCount, 1);
-                randomx_calculate_hash_next(m_vm->get(), tempHash, m_job.blob(), job.size(), m_hash);
+             
+                // MINING LOOP
+                if (true)
+                {
+                    if (m_count % 10000 == 0)
+                    {
+                        if (gbbp::m_bbpjob.fInitialized)
+                        {
+                            memcpy(bbp_prev_hash, gbbp::m_bbpjob.prevblockhash, 32);
+                            my64target = gbbp::m_bbpjob.target64;
+                            memcpy(myjobtarget, gbbp::m_bbpjob.target32, 32);
+                            nDifficulty = gbbp::m_bbpjob.difficulty;
+                            if (gbbp::m_bbpjob.fInitialized == true && gbbp::m_bbpjob.fSolutionFound == false && fSolved == true)
+                                   fSolved = false;
+                        }
+                    }
+
+                    randomx_calculate_dual_hash(m_vm->get(), bbp_prev_hash, out_bbphash, m_job.blob(), job.size(), m_hash);
+                    double nDiff1 = FullTest3(out_bbphash);
+                    if (!fSolved && nDifficulty > 0 && nDiff1 >= nDifficulty)
+                    {
+                         // This RandomX hash has solved a biblepay-pool job!
+                         fSolved = true;
+                         // Verify and gather information
+                         randomx_calculate_dual_hash(m_vm->get(), bbp_prev_hash, out_bbphash, m_job.blob(), job.size(), m_hash);
+                         char* data = (char*)calloc(512, 1);
+                         char* seed = (char*)calloc(65, 1);
+                         char* bbphash = (char*)calloc(65, 1);
+                         char* rxhash = (char*)calloc(65, 1);
+                         char* prevhash = (char*)calloc(65, 1);
+                         Buffer::toHex(job.seed().data(), 32, seed);
+                         Buffer::toHex(m_hash, 32,rxhash);
+                         Buffer::toHex(out_bbphash, 32, bbphash);
+                         Buffer::toHex(bbp_prev_hash, 32, prevhash);
+                         Buffer::toHex(reinterpret_cast<const char*>(m_job.blob()), job.size(), data);
+                         if (fDebug)
+                             printf("\n Submitting BBP with actual-difficulty %d, prev_bbp_hash %s, rxhash %s, my_bbp_hash %s, datasource %s, seed %s ", nActualDifficulty, prevhash, rxhash, bbphash, data, seed);
+                         JobResults::submitBBP(String(data), m_count, String(rxhash), String(bbphash), String(seed));
+                         
+                    }
+                }
             }
             else
 #           endif
@@ -232,11 +343,16 @@ void xmrig::CpuWorker<N>::start()
             }
 
             for (size_t i = 0; i < N; ++i) {
-                if (*reinterpret_cast<uint64_t*>(m_hash + (i * 32) + 24) < job.target()) {
+                if (*reinterpret_cast<uint64_t*>(m_hash + (i * 32) + 24) < job.target()) 
+                {
+                    // This dual-hash has solved a RandomX header
+                    uint64_t nActdiff2 = job.toDiff(*reinterpret_cast<uint64_t*>(out_bbphash + 24));
+                    randomx_calculate_dual_hash(m_vm->get(), bbp_prev_hash, out_bbphash,  m_job.blob(), job.size(), m_hash);
                     JobResults::submit(job, current_job_nonces[i], m_hash + (i * 32));
                 }
             }
 
+            m_job.nextRound(kReserveCount, 1);
             m_count += N;
 
             if (m_yield) {
