@@ -57,6 +57,7 @@ public:
     virtual void stop();
 
     Api *api() const;
+    bool isBBP;
     bool isBackground() const;
     bool reload(const rapidjson::Value &json);
     Config *config() const;

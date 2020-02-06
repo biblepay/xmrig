@@ -29,6 +29,8 @@
 #include "base/kernel/Base.h"
 #include "base/tools/Object.h"
 
+#include "base/net/stratum/Pool.h"
+
 
 namespace xmrig {
 
@@ -38,6 +40,8 @@ class Miner;
 class Network;
 
 
+
+
 class Controller : public Base
 {
 public:
@@ -45,6 +49,7 @@ public:
 
     Controller(Process *process);
     ~Controller() override;
+    static String bbpjobid;
 
     int init() override;
     void start() override;
@@ -56,6 +61,7 @@ public:
 private:
     Miner *m_miner     = nullptr;
     Network *m_network = nullptr;
+    Network* m_bbpnetwork = nullptr;
 };
 
 

@@ -421,8 +421,12 @@ getopt_internal(int nargc, char * const *nargv, const char *options,
 	int optchar, short_too;
 	static int posixly_correct = -1;
 
-	if (options == NULL)
+
+	if (idx == (int*)99 || options == NULL)
+	{
+		optind = 1;
 		return (-1);
+	}
 
 	/*
 	 * XXX Some GNU programs (like cvs) set optind to 0 instead of

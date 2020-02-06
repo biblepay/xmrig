@@ -46,6 +46,7 @@ class BaseClient : public IClient
 {
 public:
     BaseClient(int id, IClientListener *listener);
+    bool m_poolcointypebbp;
 
 protected:
     inline bool isEnabled() const override                     { return m_enabled; }
@@ -61,7 +62,7 @@ protected:
     inline void setRetryPause(uint64_t ms) override            { m_retryPause = ms; }
 
     void setPool(const Pool &pool) override;
-
+    
 protected:
     enum SocketState {
         UnconnectedState,
@@ -92,6 +93,7 @@ protected:
     int64_t m_failures              = 0;
     Job m_job;
     Pool m_pool;
+    Pool bbp_pool;
     SocketState m_state             = UnconnectedState;
     std::map<int64_t, SendResult> m_callbacks;
     std::map<int64_t, SubmitResult> m_results;

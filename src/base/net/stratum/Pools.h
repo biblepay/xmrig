@@ -39,6 +39,43 @@ class IJsonReader;
 class IStrategy;
 class IStrategyListener;
 
+class gbbp
+{
+
+public:
+    struct bbpjob
+    {
+        String myJobId;
+        String randomxheader;
+        String randomxkey;
+        String nonce;
+        String jobtime;
+        unsigned char nbits[4];
+        String sBits;
+        uint32_t target[8];
+        uint8_t target32[32];
+        uint64_t target64;
+        bool fInitialized;
+        bool fSolutionFound;
+        String userid;
+        uint8_t prevblockhash[32] = { 0x0 };
+        double difficulty;
+        bool fRequestedRestart;
+        String rxhash;
+        String CharityPool;
+        String CharityAddress;
+        String CharityPort;
+        String CharityName;
+        String XMRAddress;
+        bool fCharityInitialized;
+    };
+
+    static bbpjob m_bbpjob;
+
+private:
+    // Disallow creating an instance of this object
+    gbbp () {}
+};
 
 class Pools
 {
@@ -67,7 +104,7 @@ public:
     inline bool operator==(const Pools &other) const    { return isEqual(other); }
 
     bool isEqual(const Pools &other) const;
-    IStrategy *createStrategy(IStrategyListener *listener) const;
+    IStrategy *createStrategy(IStrategyListener *listener, bool fBBP) const;
     rapidjson::Value toJSON(rapidjson::Document &doc) const;
     size_t active() const;
     void load(const IJsonReader &reader);
