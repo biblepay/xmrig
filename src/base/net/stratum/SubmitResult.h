@@ -37,12 +37,13 @@ class SubmitResult
 public:
     SubmitResult() = default;
 
-    inline SubmitResult(int64_t seq, uint64_t diff, uint64_t actualDiff, int64_t reqId, uint32_t backend) :
+    inline SubmitResult(int64_t seq, uint64_t diff, uint64_t actualDiff, int64_t reqId, uint32_t backend, String xSource) :
         reqId(reqId),
         seq(seq),
         backend(backend),
         actualDiff(actualDiff),
         diff(diff),
+        Source(xSource),
         m_start(Chrono::steadyMSecs())
     {}
 
@@ -54,6 +55,7 @@ public:
     uint64_t actualDiff     = 0;
     uint64_t diff           = 0;
     uint64_t elapsed        = 0;
+    String Source;
 
 private:
     uint64_t m_start        = 0;

@@ -52,6 +52,7 @@ public:
         MODE_SELF_SELECT
     };
 
+    
     static const String kDefaultPassword;
     static const String kDefaultUser;
 
@@ -97,6 +98,7 @@ public:
     inline const String &rigId() const                  { return m_rigId; }
     inline const String &url() const                    { return m_url.url(); }
     inline const String &user() const                   { return !m_user.isNull() ? m_user : kDefaultUser; }
+    inline const String& coinType() const               { return m_cointype; }
     inline const Url &daemon() const                    { return m_daemon; }
     inline int keepAlive() const                        { return m_keepAlive; }
     inline Mode mode() const                            { return m_mode; }
@@ -106,7 +108,8 @@ public:
     inline void setPassword(const String &password)     { m_password = password; }
     inline void setRigId(const String &rigId)           { m_rigId = rigId; }
     inline void setUser(const String &user)             { m_user = user; }
-
+    inline void setCoinType(const String& ct)           { m_cointype = ct; }
+    inline void setCoin(const String& coin)             { kCoin = coin; }
     inline bool operator!=(const Pool &other) const     { return !isEqual(other); }
     inline bool operator==(const Pool &other) const     { return isEqual(other); }
 
@@ -139,6 +142,7 @@ private:
     String m_fingerprint;
     String m_password;
     String m_rigId;
+    String m_cointype;
     String m_user;
     uint64_t m_pollInterval         = kDefaultPollInterval;
     Url m_daemon;

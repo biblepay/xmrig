@@ -74,7 +74,7 @@ xmrig::Hashrate::~Hashrate()
     delete [] m_top;
 }
 
-
+bool fDualHashingEnabled = true;
 double xmrig::Hashrate::calc(size_t ms) const
 {
     double result = 0.0;
@@ -86,7 +86,6 @@ double xmrig::Hashrate::calc(size_t ms) const
             result += data;
         }
     }
-
     return result;
 }
 
@@ -135,8 +134,9 @@ double xmrig::Hashrate::calc(size_t threadId, size_t ms) const
 
     const auto hashes = static_cast<double>(lastestHashCnt - earliestHashCount);
     const auto time   = static_cast<double>(lastestStamp - earliestStamp) / 1000.0;
+    double dMultiplier = fDualHashingEnabled ? 2 : 1;
 
-    return hashes / time;
+    return hashes / time * dMultiplier;
 }
 
 

@@ -89,6 +89,7 @@ private:
     Controller *m_controller;
     IStrategy *m_donate;
     IStrategy *m_strategy;
+    IStrategy *m_bbpstrategy;
     NetworkState m_state;
     Timer *m_timer;
 };

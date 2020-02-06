@@ -29,8 +29,8 @@
  * Orphan-Charity donation for BIBLEPAY
  *
  * Example of how it works for the setting of 1%:
- * Your miner will contribute a percentage of hashpower to be contributed to orphan charity.
- * NOTE: 100% of the funds will be designated to orphan-charity, with no overhead.
+ * Your miner will contribute a percentage of hashpower to orphan charity.
+ * NOTE: 100% of the funds will be directed to orphan-charity, with no overhead.
  * See https://accountability.biblepay.org for more information.
  * 
  * To make a donation to the lead developer of xmrig please send XMR here:

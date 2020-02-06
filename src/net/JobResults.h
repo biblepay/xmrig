@@ -29,15 +29,13 @@
 
 #include <cstddef>
 #include <cstdint>
-
+#include "base/net/stratum/Pools.h"
 
 namespace xmrig {
-
 
 class IJobResultListener;
 class Job;
 class JobResult;
-
 
 class JobResults
 {
@@ -45,6 +43,8 @@ public:
     static void setListener(IJobResultListener *listener, bool hwAES);
     static void stop();
     static void submit(const Job &job, uint32_t nonce, const uint8_t *result);
+    static void submitBBP(String data, uint32_t nonce, String randomxhash, String bbp_hash, String seed);
+
     static void submit(const JobResult &result);
 
 #   if defined(XMRIG_FEATURE_OPENCL) || defined(XMRIG_FEATURE_CUDA)
