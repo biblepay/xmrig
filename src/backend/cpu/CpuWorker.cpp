@@ -210,6 +210,7 @@ void phex(uint64_t data[], char* name)
     printf(" H:%s Val:%s ", name, d1);
 }
 
+/*
 static void R256b(uint8_t toSwap[], uint8_t swapped[])
 {
     for (int i = 0; i < 32; i++)
@@ -218,6 +219,7 @@ static void R256b(uint8_t toSwap[], uint8_t swapped[])
         swapped[i] = toSwap[iSource];
     }
 }
+
 
 static void ConvertH8TO32(uint8_t h1[], uint32_t h2[])
 {
@@ -229,19 +231,18 @@ static void ConvertH8TO32(uint8_t h1[], uint32_t h2[])
         h2[i] = i32;
     }
 }
+*/
 
 
 template<size_t N>
 void xmrig::CpuWorker<N>::start()
 {
     // BiblePay vectors
-    uint32_t finalhash[8];
     uint8_t out_bbphash[32] = { 0x0 };
     uint8_t bbp_prev_hash[32] = { 0x0 };
     uint8_t myjobtarget[32] = { 0x0 };
     double nDifficulty = 0;
     double nActualDifficulty = 0;
-    uint64_t my64target = 0;
     bool fSolved = false;
     bool fDebug = false;
     // End of BiblePay vectors
@@ -264,8 +265,8 @@ void xmrig::CpuWorker<N>::start()
 
 #       ifdef XMRIG_ALGO_RANDOMX
         bool first = true;
-        alignas(16) uint64_t tempHash[8] = {0x0};
-        uint64_t mlHash[8] = {};
+        // alignas(16) uint64_t tempHash[8] = {0x0};
+        // uint64_t mlHash[8] = {};
         // RandomX is faster, we don't need to store stats so often
         if (m_job.currentJob().algorithm().family() == Algorithm::RANDOM_X) {
             storeStatsMask = 63;
@@ -302,7 +303,6 @@ void xmrig::CpuWorker<N>::start()
                         if (gbbp::m_bbpjob.fInitialized)
                         {
                             memcpy(bbp_prev_hash, gbbp::m_bbpjob.prevblockhash, 32);
-                            my64target = gbbp::m_bbpjob.target64;
                             memcpy(myjobtarget, gbbp::m_bbpjob.target32, 32);
                             nDifficulty = gbbp::m_bbpjob.difficulty;
                             if (gbbp::m_bbpjob.fInitialized == true && gbbp::m_bbpjob.fSolutionFound == false && fSolved == true)
@@ -329,7 +329,8 @@ void xmrig::CpuWorker<N>::start()
                          Buffer::toHex(bbp_prev_hash, 32, prevhash);
                          Buffer::toHex(reinterpret_cast<const char*>(m_job.blob()), job.size(), data);
                          if (fDebug)
-                             printf("\n Submitting BBP with actual-difficulty %d, prev_bbp_hash %s, rxhash %s, my_bbp_hash %s, datasource %s, seed %s ", nActualDifficulty, prevhash, rxhash, bbphash, data, seed);
+                             printf("\n Submitting BBP with actual-difficulty %d, prev_bbp_hash %s, rxhash %s, my_bbp_hash %s, datasource %s, seed %s ", 
+                                 (int)nActualDifficulty, prevhash, rxhash, bbphash, data, seed);
                          JobResults::submitBBP(String(data), m_count, String(rxhash), String(bbphash), String(seed));
                          
                     }
@@ -346,7 +347,6 @@ void xmrig::CpuWorker<N>::start()
                 if (*reinterpret_cast<uint64_t*>(m_hash + (i * 32) + 24) < job.target()) 
                 {
                     // This dual-hash has solved a RandomX header
-                    uint64_t nActdiff2 = job.toDiff(*reinterpret_cast<uint64_t*>(out_bbphash + 24));
                     randomx_calculate_dual_hash(m_vm->get(), bbp_prev_hash, out_bbphash,  m_job.blob(), job.size(), m_hash);
                     JobResults::submit(job, current_job_nonces[i], m_hash + (i * 32));
                 }

@@ -30,8 +30,8 @@
 #include "base/tools/Object.h"
 #include "net/interfaces/IJobResultListener.h"
 #include "net/JobResult.h"
-
 #include "base/net/stratum/Pools.h"
+#include "base/net/stratum/Client.h"
 
 #ifdef XMRIG_ALGO_RANDOMX
 #   include "crypto/randomx/randomx.h"
@@ -48,12 +48,10 @@
 #   include "crypto/common/VirtualMemory.h"
 #endif
 
-
 #include <cassert>
 #include <list>
 #include <mutex>
 #include <uv.h>
-#include <base\net\stratum\Client.h>
 #include <iostream>
 
 

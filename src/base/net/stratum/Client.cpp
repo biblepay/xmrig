@@ -51,12 +51,13 @@
 #include "rapidjson/error/en.h"
 #include "rapidjson/stringbuffer.h"
 #include "rapidjson/writer.h"
+#include "base/net/stratum/Pools.h"
 
 
 #ifdef _MSC_VER
 #   define strncasecmp(x,y,z) _strnicmp(x,y,z)
 #endif
-#include <base\net\stratum\Pools.h>
+
 
 
 namespace xmrig {
@@ -220,7 +221,7 @@ int64_t xmrig::Client::submit(const JobResult &result)
         gbbp::m_bbpjob.fInitialized = false;
         m_sendBuf.clear();
         int n1 = sprintf(m_sendBuf.data(), "{\"id\":2, \"method\": \"mining.authorize\", \"params\": [\"%s\", \"%s\"]}\n", m_user.data(), m_password.data());
-        
+        send(n1);
 
         m_sendBuf.clear();
         int n3 = sprintf(m_sendBuf.data(),
@@ -877,16 +878,12 @@ bool xmrig::Client::MiningSetAltruism(const char* method, const rapidjson::Value
 
 bool xmrig::Client::MiningNotify_BBP(const char* method, const rapidjson::Value& params)
 {
-    int merkle_count, i;
     const char* job_id = params["params"][0].GetString();
     const char* prevhash = params["params"][1].GetString();
     const char* coinbase = params["params"][2].GetString();
     char* prev_block_hash = (char*)calloc(65, 1); 
-    const char* merkle_root = params["params"][4].GetString();
-    const char* version = params["params"][5].GetString();
     const char* nbits = params["params"][6].GetString();
     const char* ntime = params["params"][7].GetString();
-    const char* clean = params["params"][8].GetString();
     const char* nPrevBlockTime = params["params"][9].GetString();
     // From nomp to the miner, via stratum:
 
@@ -906,6 +903,7 @@ bool xmrig::Client::MiningNotify_BBP(const char* method, const rapidjson::Value&
         gbbp::m_bbpjob.fInitialized = true;
         return true;
     }
+    return false;
 }
 
 void xmrig::Client::parseNotification(const char *method, const rapidjson::Value &params, const rapidjson::Value &error)

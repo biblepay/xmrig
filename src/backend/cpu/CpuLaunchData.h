@@ -31,7 +31,6 @@
 #include "crypto/common/Algorithm.h"
 #include "crypto/common/Assembly.h"
 #include "crypto/common/Nonce.h"
-#include <base\kernel\interfaces\IClient.h>
 
 
 namespace xmrig {

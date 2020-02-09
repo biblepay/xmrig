@@ -306,7 +306,7 @@ void xmrig::Network::tick()
         uint8_t r[32] = { 0x0 };
         j.setClientId("BBP");
         JobResult jr = JobResult(j, 1, r);
-        int iResult = m_bbpstrategy->submit(jr);
+        m_bbpstrategy->submit(jr);
         gbbp::m_bbpjob.fSolutionFound = false;
         return;
     }

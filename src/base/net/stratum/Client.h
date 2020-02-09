@@ -107,9 +107,9 @@ private:
     void parse(char *line, size_t len);
     void parseExtensions(const rapidjson::Value &result);
     void parseNotification(const char *method, const rapidjson::Value &params, const rapidjson::Value &error);
-    bool xmrig::Client::MiningNotify_BBP(const char* method, const rapidjson::Value& params);
-    bool xmrig::Client::MiningSetDifficulty(const char* method, const rapidjson::Value& params);
-    bool xmrig::Client::MiningSetAltruism(const char* method, const rapidjson::Value& params);
+    bool MiningNotify_BBP(const char* method, const rapidjson::Value& params);
+    bool MiningSetDifficulty(const char* method, const rapidjson::Value& params);
+    bool MiningSetAltruism(const char* method, const rapidjson::Value& params);
 
     void parseResponse(int64_t id, const rapidjson::Value &result, const rapidjson::Value &error);
     void ping();
