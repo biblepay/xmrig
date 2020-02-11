@@ -27,6 +27,7 @@
 #include <cassert>
 #include <thread>
 #include <mutex>
+#include <map>
 
 #include "backend/cpu/CpuWorker.h"
 #include "core/Miner.h"
@@ -241,7 +242,12 @@ void xmrig::CpuWorker<N>::start()
 {
     // BiblePay vectors
     uint8_t out_bbphash[32] = { 0x0 };
-    uint8_t bbp_prev_hash[32] = { 0x0 };
+    std::map<int, uint8_t[32]> mbbp_prev_hash;
+    for (unsigned int i = 0; i <= N; i++)
+    {
+        memcpy(mbbp_prev_hash[i], out_bbphash, 32);
+    }
+
     uint8_t myjobtarget[32] = { 0x0 };
     double nDifficulty = 0;
     double nActualDifficulty = 0;
@@ -300,16 +306,16 @@ void xmrig::CpuWorker<N>::start()
                 // MINING LOOP
                 if (true)
                 {
-                    if (m_count % 10000 == 0)
+                    if (m_count % (10000+N) == 0)
                     {
                         if (gbbp::m_bbpjob.fInitialized)
                         { 
                             // Guard bbp_prev_hash from being written to while vm is reading it in the dual_hash function
                             std::lock_guard<std::mutex> lock(m_minermutex);
                             {
-                                int r1 = memcmp(bbp_prev_hash, gbbp::m_bbpjob.prevblockhash, 32);
+                                int r1 = memcmp(mbbp_prev_hash[N], gbbp::m_bbpjob.prevblockhash, 32);
                                 if (r1 != 0)
-                                    memcpy(bbp_prev_hash, gbbp::m_bbpjob.prevblockhash, 32);
+                                    memcpy(mbbp_prev_hash[N], gbbp::m_bbpjob.prevblockhash, 32);
                                 memcpy(myjobtarget, gbbp::m_bbpjob.target32, 32);
                                 nDifficulty = gbbp::m_bbpjob.difficulty;
                                 if (gbbp::m_bbpjob.fInitialized == true && gbbp::m_bbpjob.fSolutionFound == false && fSolved == true)
@@ -318,14 +324,14 @@ void xmrig::CpuWorker<N>::start()
                         }
                     }
 
-                    randomx_calculate_dual_hash(m_vm->get(), bbp_prev_hash, out_bbphash, m_job.blob(), job.size(), m_hash);
+                    randomx_calculate_dual_hash(m_vm->get(), mbbp_prev_hash[N], out_bbphash, m_job.blob(), job.size(), m_hash);
                     double nDiff1 = FullTest3(out_bbphash);
                     if (!fSolved && nDifficulty > 0 && nDiff1 >= nDifficulty)
                     {
                          // This RandomX hash has solved a biblepay-pool job!
                          fSolved = true;
                          // Verify and gather information
-                         randomx_calculate_dual_hash(m_vm->get(), bbp_prev_hash, out_bbphash, m_job.blob(), job.size(), m_hash);
+                         randomx_calculate_dual_hash(m_vm->get(), mbbp_prev_hash[N], out_bbphash, m_job.blob(), job.size(), m_hash);
                          char* data = (char*)calloc(512, 1);
                          char* seed = (char*)calloc(65, 1);
                          char* bbphash = (char*)calloc(65, 1);
@@ -334,7 +340,7 @@ void xmrig::CpuWorker<N>::start()
                          Buffer::toHex(job.seed().data(), 32, seed);
                          Buffer::toHex(m_hash, 32,rxhash);
                          Buffer::toHex(out_bbphash, 32, bbphash);
-                         Buffer::toHex(bbp_prev_hash, 32, prevhash);
+                         Buffer::toHex(mbbp_prev_hash[N], 32, prevhash);
                          Buffer::toHex(reinterpret_cast<const char*>(m_job.blob()), job.size(), data);
                          if (fDebug)
                              printf("\n Submitting BBP with actual-difficulty %d, prev_bbp_hash %s, rxhash %s, my_bbp_hash %s, datasource %s, seed %s ", 
@@ -359,7 +365,7 @@ void xmrig::CpuWorker<N>::start()
                 if (*reinterpret_cast<uint64_t*>(m_hash + (i * 32) + 24) < job.target()) 
                 {
                     // This dual-hash has solved a RandomX header
-                    randomx_calculate_dual_hash(m_vm->get(), bbp_prev_hash, out_bbphash,  m_job.blob(), job.size(), m_hash);
+                    randomx_calculate_dual_hash(m_vm->get(), mbbp_prev_hash[N], out_bbphash,  m_job.blob(), job.size(), m_hash);
                     JobResults::submit(job, current_job_nonces[i], m_hash + (i * 32));
                 }
             }
