@@ -57,7 +57,6 @@ int xmrig::Controller::init()
     b.fCharityInitialized = false;
     b.fRequestedRestart = false;
     b.fSolutionFound = false;
-    b.myJobId = "";
     b.target64 = 0;
     gbbp::m_bbpjob = b;
 

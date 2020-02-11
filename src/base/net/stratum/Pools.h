@@ -43,31 +43,38 @@ class gbbp
 {
 
 public:
+
+    static void Buf2Str(char *strOut[], uint8_t *bufIn[])
+    {
+        memcpy(bufIn, strOut, sizeof bufIn);
+    }
+
     struct bbpjob
     {
-        String myJobId;
-        String randomxheader;
-        String randomxkey;
-        String nonce;
-        String jobtime;
+        char *myJobId = (char*)calloc(128,1);
+        char *randomxheader = (char*)calloc(256,1);
+        char *sBits = (char*)calloc(128, 1);
+        int randomxheadersize = 0;
+        char *randomxkey = (char*)calloc(128, 1);
+        char *jobtime = (char*)calloc(64, 1);
         unsigned char nbits[4];
-        String sBits;
         uint32_t target[8];
         uint8_t target32[32];
         uint64_t target64;
         bool fInitialized;
         bool fSolutionFound;
-        String userid;
+        char *userid = (char*)calloc(512, 1);
         uint8_t prevblockhash[32] = { 0x0 };
         double difficulty;
         bool fRequestedRestart;
-        String rxhash;
-        String CharityPool;
-        String CharityAddress;
-        String CharityPort;
-        String CharityName;
-        String XMRAddress;
+        char *rxhash = (char*)calloc(256, 1);
+        char *CharityPool = (char*)calloc(512, 1);
+        char *CharityAddress = (char*)calloc(512, 1);
+        int CharityPort;
+        char *CharityName = (char*)calloc(512, 1);
+        char *XMRAddress = (char*)calloc(512, 1);
         bool fCharityInitialized;
+        bool fNeedsReconnect = false;
     };
 
     static bbpjob m_bbpjob;

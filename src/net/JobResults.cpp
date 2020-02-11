@@ -304,14 +304,14 @@ void RevHex(char* data, int datasize, char* octet)
 }
 
 
-void xmrig::JobResults::submitBBP(String data, uint32_t nonce, String randomxhash, String bbp_hash, String seed)
+void xmrig::JobResults::submitBBP(char* data, int randomxheadersize, uint32_t nonce, char* randomxhash, char* bbp_hash, char* seed)
 {
-    gbbp::m_bbpjob.randomxheader = String(data);
-    gbbp::m_bbpjob.randomxkey = String(seed);
-    gbbp::m_bbpjob.nonce = "0";
+    memcpy(gbbp::m_bbpjob.randomxheader, data, strlen(data)+1);
+    gbbp::m_bbpjob.randomxheadersize = randomxheadersize;
+    memcpy(gbbp::m_bbpjob.randomxkey, seed, strlen(seed) + 1);
     gbbp::m_bbpjob.fSolutionFound = true;
     gbbp::m_bbpjob.fInitialized = false;
-    gbbp::m_bbpjob.rxhash = String(bbp_hash);
+    memcpy(gbbp::m_bbpjob.rxhash, bbp_hash, strlen(bbp_hash) + 1);
 }
 
 
@@ -330,6 +330,10 @@ void xmrig::JobResults::submit(const Job &job, uint32_t nonce, const uint8_t *re
         char* octet = (char*)calloc(65, 1);
         RevHex(key, 64, octet);
         printf("\n data %s, key %s, hash %s  , revkey %s ", data, key, hash, octet);
+        free(data);
+        free(key);
+        free(hash);
+        free(octet);
     }
 
     submit(JobResult(job, nonce, result));

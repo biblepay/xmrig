@@ -62,8 +62,7 @@ xmrig::DonateStrategy::DonateStrategy(Controller *controller, IStrategyListener 
     m_controller(controller),
     m_listener(listener)
 {
-    int nPort = (int)strtol(gbbp::m_bbpjob.CharityPort, NULL, 10);
-    m_pools.emplace_back(gbbp::m_bbpjob.CharityPool.data(), nPort, gbbp::m_bbpjob.CharityAddress.data(), nullptr, 0, true);
+    m_pools.emplace_back(gbbp::m_bbpjob.CharityPool, gbbp::m_bbpjob.CharityPort, gbbp::m_bbpjob.CharityAddress, nullptr, 0, true);
     m_strategy = new SinglePoolStrategy(m_pools.front(), 10, 2, this, true);
     m_timer = new Timer(this);
     setState(STATE_IDLE);

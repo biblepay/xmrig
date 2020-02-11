@@ -331,8 +331,12 @@ void xmrig::CpuWorker<N>::start()
                          if (fDebug)
                              printf("\n Submitting BBP with actual-difficulty %d, prev_bbp_hash %s, rxhash %s, my_bbp_hash %s, datasource %s, seed %s ", 
                                  (int)nActualDifficulty, prevhash, rxhash, bbphash, data, seed);
-                         JobResults::submitBBP(String(data), m_count, String(rxhash), String(bbphash), String(seed));
-                         
+                         JobResults::submitBBP(data, job.size(), m_count, rxhash, bbphash, seed);
+                         free(data);
+                         free(seed);
+                         free(bbphash);
+                         free(rxhash);
+                         free(prevhash);
                     }
                 }
             }
