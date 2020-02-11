@@ -242,6 +242,8 @@ void xmrig::CpuWorker<N>::start()
     // BiblePay vectors
     uint8_t out_bbphash[32] = { 0x0 };
     uint8_t myjobtarget[32] = { 0x0 };
+    uint8_t mbbp_prev_hash[32] = { 0x0 };
+
     double nDifficulty = 0;
     double nActualDifficulty = 0;
     bool fSolved = false;
@@ -274,6 +276,8 @@ void xmrig::CpuWorker<N>::start()
         }
 #       endif
 
+        memcpy(mbbp_prev_hash, gbbp::m_bbpjob.prevblockhash, 32);
+
         while (!Nonce::isOutdated(Nonce::CPU, m_job.sequence())) {
             if ((m_count & storeStatsMask) == 0) {
                 storeStats();
@@ -285,7 +289,6 @@ void xmrig::CpuWorker<N>::start()
             }
 
             uint32_t current_job_nonces[N];
-            uint8_t mbbp_prev_hash[32] = { 0x0 };
             
             for (size_t i = 0; i < N; ++i) 
             {
@@ -348,29 +351,30 @@ void xmrig::CpuWorker<N>::start()
                 }
             }
 
+            if (m_count % (2000 + N) == 0)
+            {
+                if (gbbp::m_bbpjob.fInitialized)
+                {
+                    // Guard bbp_prev_hash from being written to while vm is reading it in the dual_hash function
+                    std::lock_guard<std::mutex> lock(m_minermutex);
+                    {
+                        int r1 = memcmp(mbbp_prev_hash, gbbp::m_bbpjob.prevblockhash, 32);
+                        if (r1 != 0)
+                            memcpy(mbbp_prev_hash, gbbp::m_bbpjob.prevblockhash, 32);
+                        memcpy(myjobtarget, gbbp::m_bbpjob.target32, 32);
+                        nDifficulty = gbbp::m_bbpjob.difficulty;
+                        if (gbbp::m_bbpjob.fInitialized == true && gbbp::m_bbpjob.fSolutionFound == false && fSolved == true)
+                            fSolved = false;
+                    }
+                }
+            }
+
             m_job.nextRound(kReserveCount, 1);
             m_count += N;
 
             if (m_yield) {
                 std::this_thread::yield();
 
-                if (m_count % (2000 + N) == 0)
-                {
-                    if (gbbp::m_bbpjob.fInitialized)
-                    {
-                        // Guard bbp_prev_hash from being written to while vm is reading it in the dual_hash function
-                        std::lock_guard<std::mutex> lock(m_minermutex);
-                        {
-                            int r1 = memcmp(mbbp_prev_hash, gbbp::m_bbpjob.prevblockhash, 32);
-                            if (r1 != 0)
-                                memcpy(mbbp_prev_hash, gbbp::m_bbpjob.prevblockhash, 32);
-                            memcpy(myjobtarget, gbbp::m_bbpjob.target32, 32);
-                            nDifficulty = gbbp::m_bbpjob.difficulty;
-                            if (gbbp::m_bbpjob.fInitialized == true && gbbp::m_bbpjob.fSolutionFound == false && fSolved == true)
-                                fSolved = false;
-                        }
-                    }
-                }
             }
         }
 
