@@ -26,6 +26,7 @@
 
 #include <cassert>
 #include <thread>
+#include <mutex>
 
 #include "backend/cpu/CpuWorker.h"
 #include "core/Miner.h"
@@ -233,6 +234,7 @@ static void ConvertH8TO32(uint8_t h1[], uint32_t h2[])
 }
 */
 
+static std::mutex m_minermutex;
 
 template<size_t N>
 void xmrig::CpuWorker<N>::start()
@@ -301,12 +303,18 @@ void xmrig::CpuWorker<N>::start()
                     if (m_count % 10000 == 0)
                     {
                         if (gbbp::m_bbpjob.fInitialized)
-                        {
-                            memcpy(bbp_prev_hash, gbbp::m_bbpjob.prevblockhash, 32);
-                            memcpy(myjobtarget, gbbp::m_bbpjob.target32, 32);
-                            nDifficulty = gbbp::m_bbpjob.difficulty;
-                            if (gbbp::m_bbpjob.fInitialized == true && gbbp::m_bbpjob.fSolutionFound == false && fSolved == true)
-                                   fSolved = false;
+                        { 
+                            // Guard bbp_prev_hash from being written to while vm is reading it in the dual_hash function
+                            std::lock_guard<std::mutex> lock(m_minermutex);
+                            {
+                                int r1 = memcmp(bbp_prev_hash, gbbp::m_bbpjob.prevblockhash, 32);
+                                if (r1 != 0)
+                                    memcpy(bbp_prev_hash, gbbp::m_bbpjob.prevblockhash, 32);
+                                memcpy(myjobtarget, gbbp::m_bbpjob.target32, 32);
+                                nDifficulty = gbbp::m_bbpjob.difficulty;
+                                if (gbbp::m_bbpjob.fInitialized == true && gbbp::m_bbpjob.fSolutionFound == false && fSolved == true)
+                                    fSolved = false;
+                            }
                         }
                     }
 
