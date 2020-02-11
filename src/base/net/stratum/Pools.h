@@ -43,12 +43,7 @@ class gbbp
 {
 
 public:
-
-    static void Buf2Str(char *strOut[], uint8_t *bufIn[])
-    {
-        memcpy(bufIn, strOut, sizeof bufIn);
-    }
-
+    
     struct bbpjob
     {
         char *myJobId = (char*)calloc(128,1);

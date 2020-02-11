@@ -52,8 +52,9 @@ void xmrig::BaseTransform::load(JsonChain &chain, Process *process, IConfigTrans
     int key;
     Document doc(kObjectType);
     // In case we need to re-load the document:
-    int* idx1 = (int*)99;
-    key = getopt_long(argc, argv, short_options, options, idx1);
+
+    //int* idx1 = (int*)99;
+    //key = getopt_long(argc, argv, short_options, options, idx1);
     
     while (true) {
         key = getopt_long(argc, argv, short_options, options, nullptr);
