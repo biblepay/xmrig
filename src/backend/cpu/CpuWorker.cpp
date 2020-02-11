@@ -235,7 +235,6 @@ static void ConvertH8TO32(uint8_t h1[], uint32_t h2[])
 */
 
 static std::mutex m_minermutex;
-static uint8_t mbbp_prev_hash[32] = { 0x0 };
 
 template<size_t N>
 void xmrig::CpuWorker<N>::start()
@@ -286,6 +285,8 @@ void xmrig::CpuWorker<N>::start()
             }
 
             uint32_t current_job_nonces[N];
+            uint8_t mbbp_prev_hash[32] = { 0x0 };
+            
             for (size_t i = 0; i < N; ++i) 
             {
                 current_job_nonces[i] = *m_job.nonce(i);
