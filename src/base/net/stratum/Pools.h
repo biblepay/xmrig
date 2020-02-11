@@ -59,7 +59,7 @@ public:
         bool fInitialized;
         bool fSolutionFound;
         char *userid = (char*)calloc(512, 1);
-        uint8_t prevblockhash[32] = { 0x0 };
+        uint8_t prevblockhash[128] = { 0x0 };
         double difficulty;
         bool fRequestedRestart;
         char *rxhash = (char*)calloc(256, 1);

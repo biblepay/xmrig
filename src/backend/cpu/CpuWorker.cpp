@@ -236,7 +236,7 @@ static void ConvertH8TO32(uint8_t h1[], uint32_t h2[])
 */
 
 static std::mutex m_minermutex;
-static std::map<int, uint8_t[32]> mbbp_prev_hash;
+static std::map<int, uint8_t[128]> mbbp_prev_hash;
 static int iThreadID = 0;
 
 template<size_t N>
@@ -279,7 +279,7 @@ void xmrig::CpuWorker<N>::start()
         int threadID = iThreadID;
 
         iThreadID++;
-        if (iThreadID > 64)
+        if (iThreadID > 256)
         {
             iThreadID = 0;
             printf("Threads Restarting to %d", iThreadID);
