@@ -887,7 +887,6 @@ bool xmrig::Client::MiningNotify_BBP(const char* method, const rapidjson::Value&
 {
     const char *job_id = (char*)calloc(256, 1);
     const char *prevhash = (char*)calloc(256, 1);
-    //const char *coinbase = (char*)calloc(512000, 1);
     const char *coinbase = params["params"][2].GetString();
     const char *nbits = (char*)calloc(256, 1);
     const char *ntime = (char*)calloc(256, 1);
@@ -919,6 +918,8 @@ bool xmrig::Client::MiningNotify_BBP(const char* method, const rapidjson::Value&
         gbbp::m_bbpjob.fInitialized = true;
         fResult = true;
     }
+   
+
     return fResult;
 }
 

@@ -486,6 +486,7 @@ extern "C" {
 	static bool fDualHashingEnabled = true;
 	void randomx_calculate_dual_hash(randomx_vm *machine, const void *bbp_prev_hash, uint8_t out_bbphash[], const void *input, size_t inputSize, void *output) 
 	{
+		int canary = 0;
 		assert(machine != nullptr);
 		assert(inputSize == 0 || input != nullptr);
 		assert(output != nullptr);
@@ -523,7 +524,14 @@ extern "C" {
 			// This also ensures BBPs chain is equally as hard to mine with a standalone RandomX miner (than the dual hash affords).
 			blake256_hash(out_bbphash, uBBPIn, 160);
 			// This blakehash is what BBP uses to secure the chain as of March 2020.
+			
 		}
+		if (canary != 0)
+		{
+			int mycanary = -1;
+			printf("Stack overflow %d!=%d", canary, mycanary);
+		}
+
 	}
 
 	void randomx_calculate_hash_first(randomx_vm* machine, uint64_t (&tempHash)[8], const void* input, size_t inputSize) {
