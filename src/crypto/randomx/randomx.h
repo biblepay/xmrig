@@ -344,7 +344,8 @@ RANDOMX_EXPORT void randomx_destroy_vm(randomx_vm *machine);
  *        be NULL and at least RANDOMX_HASH_SIZE bytes must be available for writing.
 */
 
-RANDOMX_EXPORT void randomx_calculate_dual_hash(randomx_vm* machine, uint8_t bbp_prev_hash[], uint8_t out_bbphash[], const void* input, size_t inputSize, void* output);
+//RANDOMX_EXPORT void randomx_calculate_dual_hash(randomx_vm* machine, uint8_t bbp_prev_hash[], uint8_t out_bbphash[], const void* input, size_t inputSize, void* output);
+RANDOMX_EXPORT void randomx_calculate_dual_hash(randomx_vm* machine, const void* bbp_prev_hash, uint8_t out_bbphash[], const void* input, size_t inputSize, void* output);
 
 RANDOMX_EXPORT void randomx_calculate_hash_first(randomx_vm* machine, uint64_t (&tempHash)[8], const void* input, size_t inputSize);
 RANDOMX_EXPORT void randomx_calculate_hash_next(randomx_vm* machine, uint64_t (&tempHash)[8], const void* nextInput, size_t nextInputSize, void* output);

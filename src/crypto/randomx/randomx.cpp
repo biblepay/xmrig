@@ -484,7 +484,7 @@ extern "C" {
 	}
 	
 	static bool fDualHashingEnabled = true;
-	void randomx_calculate_dual_hash(randomx_vm *machine, uint8_t bbp_prev_hash[], uint8_t out_bbphash[], const void *input, size_t inputSize, void *output) 
+	void randomx_calculate_dual_hash(randomx_vm *machine, const void *bbp_prev_hash, uint8_t out_bbphash[], const void *input, size_t inputSize, void *output) 
 	{
 		assert(machine != nullptr);
 		assert(inputSize == 0 || input != nullptr);
