@@ -330,14 +330,14 @@ void xmrig::CpuWorker<N>::start()
                     }
                 }
 
+                memcpy(priorRandomXHeader, m_job.blob(), job.size());
+                memcpy(priorRandomXHash, m_hash, 32);
 
                 m_job.nextRound(kReserveCount, 1);
 
                 // MINING LOOP
                 uint8_t out_bbphash[32] = { 0x0 };
-                memcpy(priorRandomXHeader, m_job.blob(), job.size());
-                memcpy(priorRandomXHash, m_hash, 32);
-
+                
                 randomx_calculate_hash_next_dual(m_vm->get(), mbbp_prev_hash[threadID], out_bbphash, tempHash, m_job.blob(), job.size(), m_hash);
                 double nDiff1 = FullTest3(out_bbphash);
                 if ((!fSolved && nDifficulty > 0 && nDiff1 >= nDifficulty))
