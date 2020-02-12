@@ -508,7 +508,7 @@ extern "C" {
 			// BiblePay's randomx hash is a 160 byte solution to an equation.  
 			// Part A of the equation is the solution to an actual RandomX hash in any RandomX coin (or pool), while part B is the BlakeHash(BBP_PrevBlockHash + RandomX Hash) equals < BBP_Current_Block_Difficulty
 			// Note that part B must contain the prior BBP blockhash to solve.
-			uint8_t uOut[32];
+			uint8_t uOut[32] = { 0x0 };
 			// First get the RandomX VM's final hash of the RX-coin's header:
 			machine->getFinalResult(uOut, RANDOMX_HASH_SIZE);
 			memcpy(output, uOut, RANDOMX_HASH_SIZE);
@@ -553,4 +553,30 @@ extern "C" {
 		machine->hashAndFill(output, RANDOMX_HASH_SIZE, tempHash);
 	}
 
+	void randomx_calculate_hash_next_dual(randomx_vm* machine, const void* bbp_prev_hash, uint8_t out_bbphash[], uint64_t(&tempHash)[8], const void* nextInput, size_t nextInputSize, void* output)
+	{
+		machine->resetRoundingMode();
+		for (uint32_t chain = 0; chain < RandomX_CurrentConfig.ProgramCount - 1; ++chain) {
+			machine->run(&tempHash);
+			rx_blake2b(tempHash, sizeof(tempHash), machine->getRegisterFile(), sizeof(randomx::RegisterFile), nullptr, 0);
+		}
+		machine->run(&tempHash);
+		// Finish current hash and fill the scratchpad for the next hash at the same time
+		rx_blake2b(tempHash, sizeof(tempHash), nextInput, nextInputSize, nullptr, 0);
+		uint8_t uOut[32] = { 0x0 };
+		machine->hashAndFill(uOut, RANDOMX_HASH_SIZE, tempHash);
+		memcpy(output, uOut, RANDOMX_HASH_SIZE);
+		// Construct the equations output buffer (must be zero padded as we enforce the zeroes)
+		uint8_t uBBPIn[160] = { 0x0 };
+		// The BBP Previous block hash goes in position 0-31, then the RandomX hash that solves the BBP Equation in 32-64:
+		memcpy(uBBPIn + 32, uOut, 32);
+		memcpy(uBBPIn, bbp_prev_hash, 32);
+		// We leave some extra space between 65-160 in case RandomX hashes enlarge, or the solution enlarges later.
+		// Next, we blake hash the output, resulting in the Biblepay block hash for the next best block:
+		// The blakehash difficulty target must be less than the BBP diff target of the *next block*
+		// Note: Since we require the original RandomX hash to be proven, and the BBP prior blockhash must be in the equation, this prevents pre-mining BBP blocks.
+		// This also ensures BBPs chain is equally as hard to mine with a standalone RandomX miner (than the dual hash affords).
+		blake256_hash(out_bbphash, uBBPIn, 160);
+		// This blakehash is what BBP uses to secure the chain as of March 2020.
+	}
 }

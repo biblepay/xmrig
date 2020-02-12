@@ -269,6 +269,9 @@ void xmrig::CpuWorker<N>::start()
 
 #       ifdef XMRIG_ALGO_RANDOMX
         bool first = true;
+        uint64_t tempHash[8] = {};
+        uint8_t priorRandomXHeader[160] = { 0x0 };
+
         // RandomX is faster, we don't need to store stats so often
         if (m_job.currentJob().algorithm().family() == Algorithm::RANDOM_X) {
             storeStatsMask = 63;
@@ -276,7 +279,7 @@ void xmrig::CpuWorker<N>::start()
 #       endif
 
         int threadID = iThreadID;
-
+        
         iThreadID++;
         if (iThreadID > 256)
         {
@@ -306,48 +309,54 @@ void xmrig::CpuWorker<N>::start()
             }
             
 
-            if (m_count % (2000 + N) == 0)
-            {
-                if (gbbp::m_bbpjob.fInitialized)
-                {
-                    int r1 = memcmp(mbbp_prev_hash[threadID], gbbp::m_bbpjob.prevblockhash, 32);
-                    if (r1 != 0)  
-                       memcpy(mbbp_prev_hash[threadID], gbbp::m_bbpjob.prevblockhash, 32);
-
-                    if (gbbp::m_bbpjob.fInitialized == true && gbbp::m_bbpjob.fSolutionFound == false && fSolved == true)
-                       fSolved = false;
-                }
-            }
-
-
 #           ifdef XMRIG_ALGO_RANDOMX
             if (job.algorithm().family() == Algorithm::RANDOM_X) {
                 if (first) {
                     first = false;
+                    randomx_calculate_hash_first(m_vm->get(), tempHash, m_job.blob(), job.size());
                 }
-             
+
+
+                if (m_count % (2000 + N) == 0)
+                {
+                    if (gbbp::m_bbpjob.fInitialized)
+                    {
+                        int r1 = memcmp(mbbp_prev_hash[threadID], gbbp::m_bbpjob.prevblockhash, 32);
+                        if (r1 != 0)
+                            memcpy(mbbp_prev_hash[threadID], gbbp::m_bbpjob.prevblockhash, 32);
+
+                        if (gbbp::m_bbpjob.fInitialized == true && gbbp::m_bbpjob.fSolutionFound == false && fSolved == true)
+                            fSolved = false;
+                    }
+                }
+
+
                 // MINING LOOP
                 if (true)
                 {
                     uint8_t out_bbphash[32] = { 0x0 };
-                    randomx_calculate_dual_hash(m_vm->get(), mbbp_prev_hash[threadID], out_bbphash, m_job.blob(), job.size(), m_hash);
+                    memcpy(priorRandomXHeader, m_job.blob(), job.size());
+                    m_job.nextRound(kReserveCount, 1);
+                    randomx_calculate_hash_next_dual(m_vm->get(), mbbp_prev_hash[threadID], out_bbphash, tempHash, m_job.blob(), job.size(), m_hash);
                     double nDiff1 = FullTest3(out_bbphash);
-                    if (!fSolved && nDifficulty > 0 && nDiff1 >= nDifficulty)
+                    if ((!fSolved && nDifficulty > 0 && nDiff1 >= nDifficulty))
                     {
+                         // The randomx_calculate_hash_next_dual provides the solution to the *last* hash in the prior round, so here we have to glean results from the *priorRandomXHeader*
+                         uint8_t out_rxhash[32] = { 0x0 };
+                         randomx_calculate_dual_hash(m_vm->get(), mbbp_prev_hash[threadID], out_bbphash, priorRandomXHeader, job.size(), out_rxhash);
                          // This RandomX hash has solved a biblepay-pool job!
                          fSolved = true;
                          // Verify and gather information
-                         //randomx_calculate_du_hash(m_vm->get(), mbbp_prev_hash[threadID], out_bbphash, m_job.blob(), job.size(), m_hash);
                          char* data = (char*)calloc(512, 1);
                          char* seed = (char*)calloc(65, 1);
                          char* bbphash = (char*)calloc(65, 1);
                          char* rxhash = (char*)calloc(65, 1);
                          char* prevhash = (char*)calloc(65, 1);
                          Buffer::toHex(job.seed().data(), 32, seed);
-                         Buffer::toHex(m_hash, 32,rxhash);
+                         Buffer::toHex(out_rxhash, 32, rxhash);
                          Buffer::toHex(out_bbphash, 32, bbphash);
-                         Buffer::toHex(gbbp::m_bbpjob.prevblockhash, 32, prevhash);
-                         Buffer::toHex(reinterpret_cast<const char*>(m_job.blob()), job.size(), data);
+                         Buffer::toHex(mbbp_prev_hash[iThreadID], 32, prevhash);
+                         Buffer::toHex(reinterpret_cast<const char*>(priorRandomXHeader), job.size(), data);
                          if (fDebug)
                              printf("\n Submitting BBP with actual-difficulty %d, prev_bbp_hash %s, rxhash %s, my_bbp_hash %s, datasource %s, seed %s ", 
                                  (int)nActualDifficulty, prevhash, rxhash, bbphash, data, seed);
@@ -371,14 +380,11 @@ void xmrig::CpuWorker<N>::start()
                 if (*reinterpret_cast<uint64_t*>(m_hash + (i * 32) + 24) < job.target()) 
                 {
                     // This dual-hash has solved a RandomX header
-                    // uint8_t mprev[32] = { 0x0 };
-                    // randomx_calculate_du_hash(m_vm->get(), mprev, out_bbphash, m_job.blob(), job.size(), m_hash);
                     JobResults::submit(job, current_job_nonces[i], m_hash + (i * 32));
                 }
             }
 
 
-            m_job.nextRound(kReserveCount, 1);
             m_count += N;
 
             if (m_yield) {
