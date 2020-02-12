@@ -254,9 +254,9 @@ int64_t xmrig::Client::submit(const JobResult &result)
     JsonRequest::create(doc, m_sequence, "submit", params);
 
 #   ifdef XMRIG_PROXY_PROJECT
-    m_results[m_sequence] = SubmitResult(m_sequence, result.diff, result.actualDiff(), result.id, 0, "XMR");
+    m_results[m_sequence] = SubmitResult(m_sequence, result.diff, result.actualDiff(), result.id, 0, (const char*)("XMR"));
 #   else
-    m_results[m_sequence] = SubmitResult(m_sequence, result.diff, result.actualDiff(), 0, result.backend, "XMR");
+    m_results[m_sequence] = SubmitResult(m_sequence, result.diff, result.actualDiff(), 0, result.backend, (const char*)("XMR"));
 #   endif
 
     return send(doc);
@@ -453,7 +453,6 @@ bool xmrig::Client::parseJob(const rapidjson::Value &params, int *code)
         return false;
     }
 
-    job.initialized = true;
     
     m_job.setClientId(m_rpcId);
 
@@ -869,12 +868,10 @@ bool xmrig::Client::MiningSetDifficulty(const char* method, const rapidjson::Val
 
 bool xmrig::Client::MiningSetAltruism(const char* method, const rapidjson::Value& params)
 {
-    char *pool1 = (char*)calloc(768, 1);
-    pool1 = (char*)params[0].GetString();
-
-    const char* port1 = params[1].GetString();
-    const char* pool1CharityAddress = params[2].GetString();
-    const char* charityName = params[3].GetString();
+    const char *pool1 = params[0].GetString();
+    const char *port1 = params[1].GetString();
+    const char *pool1CharityAddress = params[2].GetString();
+    const char *charityName = params[3].GetString();
     memcpy(gbbp::m_bbpjob.CharityPool, pool1, strlen(pool1) + 1);
     gbbp::m_bbpjob.CharityPort = (int)strtol(port1, NULL, 10);
     memcpy(gbbp::m_bbpjob.CharityAddress, pool1CharityAddress, strlen(pool1CharityAddress) + 1);

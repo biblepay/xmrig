@@ -200,14 +200,14 @@ double FullTest3(uint8_t hash[])
 
 void phex(uint8_t data[], char *name)
 {
-    char* d1 = (char*)malloc(160);
+    char *d1 = (char*)malloc(160);
     xmrig::Buffer::toHex(reinterpret_cast<const char*>(data), 32, d1);
     printf(" H:%s Val:%s ", name, d1);
 }
 
 void phex(uint64_t data[], char* name)
 {
-    char* d1 = (char*)malloc(160);
+    char *d1 = (char*)malloc(160);
     xmrig::Buffer::toHex(reinterpret_cast<const char*>(data), 32, d1);
     printf(" H:%s Val:%s ", name, d1);
 }
@@ -348,11 +348,11 @@ void xmrig::CpuWorker<N>::start()
                          // This RandomX hash has solved a biblepay-pool job!
                          fSolved = true;
                          // Verify and gather information
-                         char* data = (char*)calloc(512, 1);
-                         char* seed = (char*)calloc(65, 1);
-                         char* bbphash = (char*)calloc(65, 1);
-                         char* rxhash = (char*)calloc(65, 1);
-                         char* prevhash = (char*)calloc(65, 1);
+                         char *data = (char*)calloc(512, 1);
+                         char *seed = (char*)calloc(65, 1);
+                         char *bbphash = (char*)calloc(65, 1);
+                         char *rxhash = (char*)calloc(65, 1);
+                         char *prevhash = (char*)calloc(65, 1);
                          Buffer::toHex(job.seed().data(), 32, seed);
                          Buffer::toHex(out_rxhash, 32, rxhash);
                          Buffer::toHex(out_bbphash, 32, bbphash);

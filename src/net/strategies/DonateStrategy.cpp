@@ -275,7 +275,7 @@ void xmrig::DonateStrategy::setJob(IClient *client, const Job &job)
 
 void xmrig::DonateStrategy::setResult(IClient *client, const SubmitResult &result, const char *error)
 {
-    SubmitResult s(result.seq, result.diff, result.actualDiff, result.reqId, result.backend, String("XMR-Charity"));
+    SubmitResult s(result.seq, result.diff, result.actualDiff, result.reqId, result.backend, (const char *)("XMR-Charity"));
     m_listener->onResultAccepted(this, client, s, error);
 }
 

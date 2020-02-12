@@ -55,10 +55,6 @@ public:
     inline Job(Job &&other) noexcept    { move(std::move(other)); }
 
     ~Job() = default;
-    bool initialized = false;
-    String extraJobID;
-    String extraJobID2;
-    int iExtraJobID3 = 0;
     bool isEqual(const Job &other) const;
     bool setBlob(const char *blob);
     bool setSeedHash(const char *hash);

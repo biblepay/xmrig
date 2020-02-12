@@ -85,7 +85,7 @@ bool xmrig::BaseClient::handleResponse(int64_t id, const rapidjson::Value &resul
     if (id == 4)
     {
         // Nomp - accepted
-        SubmitResult s = SubmitResult(1, (uint64_t)1, 1, 1, 0, String("BBP"));
+        SubmitResult s = SubmitResult(1, (uint64_t)1, 1, 1, 0, (const char*)("BBP"));
         m_listener->onResultAccepted(this, s, error["error"].GetString());
         return true;
     }

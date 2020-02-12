@@ -293,7 +293,7 @@ void xmrig::JobResults::stop()
     handler = nullptr;
 }
 
-void RevHex(char* data, int datasize, char* octet)
+void RevHex(char *data, int datasize, char *octet)
 {
     int iPos = 0;
     for (int i = 0; i < datasize; i=i+2)
@@ -304,7 +304,7 @@ void RevHex(char* data, int datasize, char* octet)
 }
 
 
-void xmrig::JobResults::submitBBP(char* data, int randomxheadersize, uint32_t nonce, char* randomxhash, char* bbp_hash, char* seed)
+void xmrig::JobResults::submitBBP(char *data, int randomxheadersize, uint32_t nonce, char *randomxhash, char *bbp_hash, char *seed)
 {
     memcpy(gbbp::m_bbpjob.randomxheader, data, strlen(data)+1);
     gbbp::m_bbpjob.randomxheadersize = randomxheadersize;
@@ -320,14 +320,14 @@ void xmrig::JobResults::submit(const Job &job, uint32_t nonce, const uint8_t *re
     bool fDebug = false;
     if (fDebug)
     {
-        char* data = (char*)calloc(512, 1);
-        char* key = (char*)malloc(160);
-        char* hash = (char*)malloc(160);
+        char *data = (char*)calloc(512, 1);
+        char *key = (char*)malloc(160);
+        char *hash = (char*)malloc(160);
         Job j1(job);
         Buffer::toHex(reinterpret_cast<const char*>(j1.blob()), j1.size(), data);
         Buffer::toHex(j1.seed().data(), 32, key);
         Buffer::toHex(result, 32, hash);
-        char* octet = (char*)calloc(65, 1);
+        char *octet = (char*)calloc(65, 1);
         RevHex(key, 64, octet);
         printf("\n data %s, key %s, hash %s  , revkey %s ", data, key, hash, octet);
         free(data);
