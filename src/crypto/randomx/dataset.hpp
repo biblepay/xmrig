@@ -55,8 +55,9 @@ struct randomx_cache {
 };
 
 //A pointer to a standard-layout struct object points to its initial member
-static_assert(std::is_standard_layout<randomx_dataset>(), "randomx_dataset must be a standard-layout struct");
-static_assert(std::is_standard_layout<randomx_cache>(), "randomx_cache must be a standard-layout struct");
+//Per Monero issue 1215 we dont need this assert (I have to take it out to debug in VS2015) https://github.com/xmrig/xmrig/issues/1215
+//static_assert(std::is_standard_layout<randomx_dataset>(), "randomx_dataset must be a standard-layout struct");
+//static_assert(std::is_standard_layout<randomx_cache>(), "randomx_cache must be a standard-layout struct");
 
 namespace randomx {
 
