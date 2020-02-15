@@ -36,7 +36,7 @@
 
 #define APP_VER_MAJOR  5
 #define APP_VER_MINOR  5
-#define APP_VER_PATCH  5
+#define APP_VER_PATCH  6
 
 #ifdef _MSC_VER
 #   if (_MSC_VER >= 1920)

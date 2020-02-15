@@ -27,6 +27,7 @@
 
 
 #include <vector>
+#include <map>
 
 
 #include "base/net/stratum/Pool.h"
@@ -56,23 +57,28 @@ public:
         uint32_t target[8];
         uint8_t target32[32];
         uint64_t target64;
-        bool fInitialized;
-        bool fSolutionFound;
+		bool fInitialized = false;
+		bool fSolutionFound = false;
         char *userid = (char*)calloc(512, 1);
         uint8_t prevblockhash[128] = { 0x0 };
-        double difficulty;
-        bool fRequestedRestart;
+		double difficulty = 0;
+		bool fRequestedRestart = false;
         char *rxhash = (char*)calloc(256, 1);
         char *CharityPool = (char*)calloc(512, 1);
         char *CharityAddress = (char*)calloc(512, 1);
-        int CharityPort;
+		int CharityPort = 0;
         char *CharityName = (char*)calloc(512, 1);
         char *XMRAddress = (char*)calloc(512, 1);
-        bool fCharityInitialized;
+		bool fCharityInitialized = false;
         bool fNeedsReconnect = false;
+		bool fPossiblyNeedsReconnect = false;
     };
 
     static bbpjob m_bbpjob;
+	static std::map<std::string, int> m_mapResultSuccess;
+	static std::map<std::string, int> m_mapResultFail;
+
+
 
 private:
     // Disallow creating an instance of this object

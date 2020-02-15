@@ -53,16 +53,10 @@ int xmrig::Controller::init()
 {
     // Initialize BiblePay vector
     gbbp::bbpjob b;
-    b.fInitialized = false;
-    b.fCharityInitialized = false;
-    b.fRequestedRestart = false;
-    b.fSolutionFound = false;
     b.target64 = 0;
     gbbp::m_bbpjob = b;
-
     Base::init();
     VirtualMemory::init(config()->cpu().memPoolSize(), config()->cpu().isHugePages());
-
     m_network = new Network(this);
 
     return 0;

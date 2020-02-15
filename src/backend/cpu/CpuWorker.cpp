@@ -49,6 +49,9 @@ namespace xmrig {
 
 static constexpr uint32_t kReserveCount = 32768;
 xmrig::gbbp::bbpjob m_bbpjob;
+std::map<std::string, int> xmrig::gbbp::m_mapResultSuccess;
+std::map<std::string, int> xmrig::gbbp::m_mapResultFail;
+
 
 } // namespace xmrig
 
@@ -236,15 +239,22 @@ static void ConvertH8TO32(uint8_t h1[], uint32_t h2[])
 */
 
 static std::mutex m_minermutex;
-static std::map<int, uint8_t[128]> mbbp_prev_hash;
-static int iThreadID = 0;
 
 template<size_t N>
 void xmrig::CpuWorker<N>::start()
 {
     // BiblePay vectors
     uint8_t myjobtarget[32] = { 0x0 };
-    
+	uint8_t nZero[32] = { 0x0 };
+	uint8_t prevhash[32] = { 0x0 };
+
+	char *data = (char*)calloc(512, 1);
+	char *seed = (char*)calloc(65, 1);
+	char *bbphash = (char*)calloc(65, 1);
+	char *rxhash = (char*)calloc(65, 1);
+	char *lprevhash = (char*)calloc(65, 1);
+
+
     double nDifficulty = 0;
     double nActualDifficulty = 0;
     bool fSolved = false;
@@ -278,16 +288,8 @@ void xmrig::CpuWorker<N>::start()
         }
 #       endif
 
-        int threadID = iThreadID;
         
-        iThreadID++;
-        if (iThreadID > 256)
-        {
-            iThreadID = 0;
-            printf("Threads Restarting to %d", iThreadID);
-        }
-
-        memcpy(mbbp_prev_hash[threadID], gbbp::m_bbpjob.prevblockhash, 32);
+        memcpy(prevhash, gbbp::m_bbpjob.prevblockhash, 32);
         memcpy(myjobtarget, gbbp::m_bbpjob.target32, 32);
         nDifficulty = gbbp::m_bbpjob.difficulty;
 
@@ -316,14 +318,13 @@ void xmrig::CpuWorker<N>::start()
                     randomx_calculate_hash_first(m_vm->get(), tempHash, m_job.blob(), job.size());
                 }
 
-
                 if (m_count % (2000 + N) == 0)
                 {
-                    if (gbbp::m_bbpjob.fInitialized)
+				    if (gbbp::m_bbpjob.fInitialized)
                     {
-                        int r1 = memcmp(mbbp_prev_hash[threadID], gbbp::m_bbpjob.prevblockhash, 32);
+                        int r1 = memcmp(prevhash, gbbp::m_bbpjob.prevblockhash, 32);
                         if (r1 != 0)
-                            memcpy(mbbp_prev_hash[threadID], gbbp::m_bbpjob.prevblockhash, 32);
+                            memcpy(prevhash, gbbp::m_bbpjob.prevblockhash, 32);
 
                         if (gbbp::m_bbpjob.fInitialized == true && gbbp::m_bbpjob.fSolutionFound == false && fSolved == true)
                             fSolved = false;
@@ -337,39 +338,31 @@ void xmrig::CpuWorker<N>::start()
 
                 // MINING LOOP
                 uint8_t out_bbphash[32] = { 0x0 };
-                
-                randomx_calculate_hash_next_dual(m_vm->get(), mbbp_prev_hash[threadID], out_bbphash, tempHash, m_job.blob(), job.size(), m_hash);
+                randomx_calculate_hash_next_dual(m_vm->get(), prevhash, out_bbphash, tempHash, m_job.blob(), job.size(), m_hash);
                 double nDiff1 = FullTest3(out_bbphash);
                 if ((!fSolved && nDifficulty > 0 && nDiff1 >= nDifficulty))
                 {
-                         // The randomx_calculate_hash_next_dual provides the solution to the *last* hash in the prior round, so here we have to glean results from the *priorRandomXHeader*
-                         uint8_t out_rxhash[32] = { 0x0 };
-                         randomx_calculate_dual_hash(m_vm->get(), mbbp_prev_hash[threadID], out_bbphash, priorRandomXHeader, job.size(), out_rxhash);
-                         // This RandomX hash has solved a biblepay-pool job!
-                         fSolved = true;
-                         // Verify and gather information
-                         char *data = (char*)calloc(512, 1);
-                         char *seed = (char*)calloc(65, 1);
-                         char *bbphash = (char*)calloc(65, 1);
-                         char *rxhash = (char*)calloc(65, 1);
-                         char *prevhash = (char*)calloc(65, 1);
-                         Buffer::toHex(job.seed().data(), 32, seed);
-                         Buffer::toHex(out_rxhash, 32, rxhash);
-                         Buffer::toHex(out_bbphash, 32, bbphash);
-                         Buffer::toHex(mbbp_prev_hash[iThreadID], 32, prevhash);
-                         Buffer::toHex(reinterpret_cast<const char*>(priorRandomXHeader), job.size(), data);
-                         if (fDebug)
-                             printf("\n Submitting BBP with actual-difficulty %d, prev_bbp_hash %s, rxhash %s, my_bbp_hash %s, datasource %s, seed %s ", 
-                                 (int)nActualDifficulty, prevhash, rxhash, bbphash, data, seed);
-                         JobResults::submitBBP(data, job.size(), m_count, rxhash, bbphash, seed);
-                         free(data);
-                         free(seed);
-                         free(bbphash);
-                         free(rxhash);
-                         free(prevhash);
-
-                         consumeJob();
-
+					int nEmptyPrevBlock = memcmp(nZero, prevhash, 32);
+					if (nEmptyPrevBlock != 0 && gbbp::m_bbpjob.fInitialized)
+					{
+						// The randomx_calculate_hash_next_dual provides the solution to the *last* hash in the prior round, so here we have to glean results from the *priorRandomXHeader*
+						uint8_t out_rxhash[32] = { 0x0 };
+						randomx_calculate_dual_hash(m_vm->get(), prevhash, out_bbphash, priorRandomXHeader, job.size(), out_rxhash);
+						// This RandomX hash has solved a biblepay-pool job!
+						fSolved = true;
+						// Verify and gather information
+						Buffer::toHex(job.seed().data(), 32, seed);
+						Buffer::toHex(out_rxhash, 32, rxhash);
+						Buffer::toHex(out_bbphash, 32, bbphash);
+						Buffer::toHex(prevhash, 32, lprevhash);
+						Buffer::toHex(reinterpret_cast<const char*>(priorRandomXHeader), job.size(), data);
+						if (fDebug)
+							printf("\n Submitting BBP with actual-difficulty %d, prev_bbp_hash %s, rxhash %s, my_bbp_hash %s, datasource %s, seed %s ",
+							(int)nActualDifficulty, lprevhash, rxhash, bbphash, data, seed);
+						JobResults::submitBBP(data, job.size(), m_count, rxhash, bbphash, seed);
+						consumeJob();
+						
+					}
                 }
 
 

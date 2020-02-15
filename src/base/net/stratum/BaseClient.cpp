@@ -28,6 +28,7 @@
 #include "base/kernel/interfaces/IClientListener.h"
 #include "base/net/stratum/SubmitResult.h"
 #include "rapidjson/document.h"
+#include "base/net/stratum/Pools.h"
 
 
 namespace xmrig {
@@ -84,12 +85,33 @@ bool xmrig::BaseClient::handleResponse(int64_t id, const rapidjson::Value &resul
 
     if (id == 4)
     {
-        // Nomp - accepted
         SubmitResult s = SubmitResult(1, (uint64_t)1, 1, 1, 0, (const char*)("BBP"));
         m_listener->onResultAccepted(this, s, error["error"].GetString());
         return true;
     }
 
+	if (id == 100)
+	{
+		// Nomp reply to onSubmit
+		const char *err = error.GetString();
+		bool fErrorNull = (err == NULL);
+		const char *longError = fErrorNull ? NULL : "Stale";
+		if (fErrorNull)
+		{
+			xmrig::gbbp::m_mapResultSuccess.clear();
+			xmrig::gbbp::m_mapResultFail.clear();
+		}
+		else
+		{
+			uint8_t nZero[32] = { 0x0 };
+			memcpy(xmrig::gbbp::m_bbpjob.prevblockhash, nZero, 32);
+			xmrig::gbbp::m_bbpjob.fInitialized = false;
+			gbbp::m_bbpjob.fNeedsReconnect = true;
+		}
+		SubmitResult s = SubmitResult(1, (uint64_t)1, 1, 1, 0, (const char*)("BBP"));
+		m_listener->onResultAccepted(this, s, longError);
+		return true;
+	}
     return false;
 }
 

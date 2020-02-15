@@ -218,21 +218,15 @@ int64_t xmrig::Client::submit(const JobResult &result)
 
     if (result.clientId == "BBP")
     {
-        gbbp::m_bbpjob.fInitialized = false;
-        /*
-        m_sendBuf.clear();
-        int n1 = sprintf(m_sendBuf.data(), "{\"id\":2, \"method\": \"mining.authorize\", \"params\": [\"%s\", \"%s\"]}\n", m_user.data(), m_password.data());
-        send(n1);
-        ToDo:  Reconnect to pool every so often 
-        */
-       
         m_sendBuf.clear();
         int n3 = sprintf(m_sendBuf.data(),
-            "{\"id\":4, \"method\": \"mining.submit\", \"params\": [\"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\"]}\n",
+            "{\"id\":4, \"method\": \"mining.submit\", \"params\": [\"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", %d, %d, %d, %d, %d, %d ]}\n",
             gbbp::m_bbpjob.userid,  gbbp::m_bbpjob.myJobId,
             gbbp::m_bbpjob.randomxheader,
-            gbbp::m_bbpjob.jobtime, gbbp::m_bbpjob.randomxkey, gbbp::m_bbpjob.rxhash);
-        gbbp::m_bbpjob.fInitialized = false;
+            gbbp::m_bbpjob.jobtime, gbbp::m_bbpjob.randomxkey, gbbp::m_bbpjob.rxhash, 
+			gbbp::m_mapResultSuccess["BBP"], gbbp::m_mapResultFail["BBP"], 
+			gbbp::m_mapResultSuccess["XMR"], gbbp::m_mapResultFail["XMR"], 
+			gbbp::m_mapResultSuccess["XMR-Charity"], gbbp::m_mapResultFail["XMR-Charity"]);
         send(n3);
 
         m_sendBuf.clear();
@@ -298,6 +292,16 @@ void xmrig::Client::deleteLater()
 
 void xmrig::Client::tick(uint64_t now)
 {
+	bool fBBP = strlen(m_user) == 34 ? true : false;
+	if (m_state == ReconnectingState && m_expire && now > m_expire) {
+		return connect();
+	}
+
+	if (gbbp::m_bbpjob.fNeedsReconnect && fBBP) {
+		gbbp::m_bbpjob.fNeedsReconnect = false;
+		return connect();
+	}
+
     if (m_state == ConnectedState) {
         if (m_expire && now > m_expire) {
             LOG_DEBUG_ERR("[%s] timeout", url());
@@ -310,16 +314,9 @@ void xmrig::Client::tick(uint64_t now)
         return;
     }
 
-    if (gbbp::m_bbpjob.fNeedsReconnect || (m_state == ReconnectingState && m_expire && now > m_expire)) {
-        if (gbbp::m_bbpjob.fNeedsReconnect) gbbp::m_bbpjob.fNeedsReconnect = false;
-        return connect();
-    }
-
     if (m_state == ConnectingState && m_expire && now > m_expire) {
         return reconnect();
     }
-
-    
 }
 
 
@@ -761,8 +758,9 @@ void xmrig::Client::parse(char *line, size_t len)
     const rapidjson::Value &id = doc["id"];
 
     if (id.IsInt64()) {
-        parseResponse(id.GetInt64(), doc["result"], doc["error"]);
-    }
+		int64_t nID = id.GetInt64();
+		parseResponse(id.GetInt64(), doc["result"], doc["error"]);
+	}
     else {
         parseNotification(doc["method"].GetString(), doc["params"], doc["error"]);
     }
@@ -913,6 +911,7 @@ bool xmrig::Client::MiningNotify_BBP(const char* method, const rapidjson::Value&
         memcpy(prev_block_hash, coinbase + 8, 64);
         Buffer::fromHex(prev_block_hash, 64, gbbp::m_bbpjob.prevblockhash);
         gbbp::m_bbpjob.fInitialized = true;
+		gbbp::m_bbpjob.fNeedsReconnect = false;
         fResult = true;
     }
    
@@ -1028,7 +1027,12 @@ void xmrig::Client::read(ssize_t nread)
     }
 
     if (nread < 0) {
-        if (!isQuiet()) {
+		const char *err = uv_strerror(static_cast<int>(nread));
+		if (strcmp(err, "end of file") == 0) 
+		{
+			gbbp::m_bbpjob.fPossiblyNeedsReconnect = true;
+		}
+		else if (!isQuiet()) {
             LOG_ERR("[%s] read error: \"%s\"", url(), uv_strerror(static_cast<int>(nread)));
             gbbp::m_bbpjob.fNeedsReconnect = true;
         }

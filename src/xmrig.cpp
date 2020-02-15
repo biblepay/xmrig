@@ -39,6 +39,5 @@ int main(int argc, char **argv)
     }
 
     App app(&process);
-    int icode = app.exec();
-    return icode;
+	return app.exec();
 }

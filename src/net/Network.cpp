@@ -213,7 +213,6 @@ void xmrig::Network::onPause(IStrategy *strategy)
     }
 }
 
-
 void xmrig::Network::onResultAccepted(IStrategy *, IClient *, const SubmitResult &result, const char *error)
 {
     m_state.add(result, error);
@@ -221,10 +220,12 @@ void xmrig::Network::onResultAccepted(IStrategy *, IClient *, const SubmitResult
     if (error) {
         LOG_INFO("%s " RED_BOLD("rejected") " (%" PRId64 "/%" PRId64 ") diff " WHITE_BOLD("%" PRIu64) " " GREEN_BOLD("%s") " " RED("\"%s\"") " " BLACK_BOLD("(%" PRIu64 " ms)"),
                  backend_tag(result.backend), m_state.accepted, m_state.rejected, result.diff, result.Source, error, result.elapsed);
+		gbbp::m_mapResultFail[result.Source]++;
     }
     else {
         LOG_INFO("%s " GREEN_BOLD("accepted") " (%" PRId64 "/%" PRId64 ") diff " WHITE_BOLD("%" PRIu64) " " GREEN_BOLD("%s") " " BLACK_BOLD("(%" PRIu64 " ms)"),
                  backend_tag(result.backend), m_state.accepted, m_state.rejected, result.diff, result.Source, result.elapsed);
+		gbbp::m_mapResultSuccess[result.Source]++;
     }
 }
 
@@ -279,6 +280,7 @@ void xmrig::Network::setJob(IClient* client, const Job& job, bool donate)
     free(snarr);
 }
 
+static int64_t nLastReconnect = 0;
 void xmrig::Network::tick()
 {
     const uint64_t now = Chrono::steadyMSecs();
@@ -299,8 +301,11 @@ void xmrig::Network::tick()
     if (m_donate) {
         m_donate->tick(now);
     }
+	if (nLastReconnect == 0)
+		nLastReconnect = now;
 
-    if (gbbp::m_bbpjob.fSolutionFound)
+	int64_t nElapsed = (now - nLastReconnect) / 1000;
+    if (gbbp::m_bbpjob.fSolutionFound || nElapsed > (60 * 30))
     {
         Job j = Job();
         j.setId(gbbp::m_bbpjob.myJobId);
@@ -312,7 +317,9 @@ void xmrig::Network::tick()
         {
             m_bbpstrategy->connect();
         }
-
+		uint8_t nZero[32] = { 0x0 };
+		memcpy(gbbp::m_bbpjob.prevblockhash, nZero, 32);
+		nLastReconnect = now;
         gbbp::m_bbpjob.fSolutionFound = false;
         return;
     }
