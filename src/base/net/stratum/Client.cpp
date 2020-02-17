@@ -218,11 +218,12 @@ int64_t xmrig::Client::submit(const JobResult &result)
 
     if (result.clientId == "BBP")
     {
+		/*
 		if (gbbp::m_bbpjob.fNeedsReconnect)
 		{
-			this->connect();
-			gbbp::m_bbpjob.fNeedsReconnect = false;
+			Authorize();
 		}
+		*/
 
         m_sendBuf.clear();
         int n3 = sprintf(m_sendBuf.data(),
@@ -235,9 +236,12 @@ int64_t xmrig::Client::submit(const JobResult &result)
 			gbbp::m_mapResultSuccess["XMR-Charity"], gbbp::m_mapResultFail["XMR-Charity"]);
         send(n3);
 
-        m_sendBuf.clear();
-        int n2 = sprintf(m_sendBuf.data(), "{\"id\": 1, \"method\": \"mining.subscribe\", \"params\": []}\n");
-        return send(n2);
+
+		m_sendBuf.clear();
+		int n2 = sprintf(m_sendBuf.data(), "{\"id\": 1, \"method\": \"mining.subscribe\", \"params\": []}\n");
+		return send(n2);
+
+
     }
     else
     {
@@ -271,12 +275,17 @@ void xmrig::Client::connect()
     }
 #   endif
 
+	bool fBBP = strlen(m_user) == 34 ? true : false;
+	this->isBBP = fBBP;
     resolve(m_pool.host());
 }
 
 
 void xmrig::Client::connect(const Pool &pool)
 {
+	// 2-17-2020
+
+
     setPool(pool);
     connect();
 }
@@ -303,18 +312,22 @@ void xmrig::Client::tick(uint64_t now)
 		return connect();
 	}
 
-	if (gbbp::m_bbpjob.fNeedsReconnect)
+	if (this->isBBP && m_keepAlive == 0)
 	{
-		ping();
-		return;
+		m_keepAlive = now + (60 * 5 * 1000);
 	}
+
+	// printf(" bbp %d %s", (float)this->isBBP, ip().data());
 
     if (m_state == ConnectedState) {
         if (m_expire && now > m_expire) {
             LOG_DEBUG_ERR("[%s] timeout", url());
             close();
         }
-        else if (m_keepAlive && now > m_keepAlive) {
+        else if (m_keepAlive && now > m_keepAlive) 
+		{
+			if (this->isBBP)
+				printf("Pinging host %d", 1);
             ping();
         }
 

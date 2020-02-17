@@ -65,7 +65,7 @@ public:
     constexpr static uint64_t kResponseTimeout  = 20 * 1000;
     constexpr static size_t kInputBufferSize    = 1024 * 16;
     constexpr static size_t kMaxSendBufferSize  = 1024 * 16;
-    
+	bool isBBP = false;
     Client(int id, const char *agent, IClientListener *listener);
     ~Client() override;
 

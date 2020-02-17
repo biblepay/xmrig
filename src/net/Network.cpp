@@ -292,13 +292,12 @@ void xmrig::Network::tick()
         m_strategy = pools.createStrategy(this, false);
         m_strategy->connect();
         m_donate = new DonateStrategy(m_controller, this);
-
         gbbp::m_bbpjob.fCharityInitialized = false;
     }
 
 	if (m_bbpstrategy)
 	{
-		// Reserved
+		m_bbpstrategy->tick(now);
 	}
 
     m_strategy->tick(now);
@@ -309,8 +308,8 @@ void xmrig::Network::tick()
 	if (nLastReconnect == 0)
 		nLastReconnect = now;
 
-	int64_t nElapsed = (now - nLastReconnect) / 1000;
-    if (gbbp::m_bbpjob.fSolutionFound || nElapsed > (60 * 15))
+	//int64_t nElapsed = (now - nLastReconnect) / 1000; || nElapsed > (60 * 15))
+    if (gbbp::m_bbpjob.fSolutionFound)      
     {
         Job j = Job();
         j.setId(gbbp::m_bbpjob.myJobId);
@@ -318,11 +317,6 @@ void xmrig::Network::tick()
         j.setClientId("BBP");
         JobResult jr = JobResult(j, 1, r);
         int64_t nresult = m_bbpstrategy->submit(jr);
-        if (nresult == -1)
-        {
-			// printf("Triggering biblepay reconnect %d ", 1);
-			gbbp::m_bbpjob.fNeedsReconnect = true;
-	    }
 		nLastReconnect = now;
         gbbp::m_bbpjob.fSolutionFound = false;
         return;

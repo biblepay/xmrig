@@ -104,14 +104,12 @@ bool xmrig::BaseClient::handleResponse(int64_t id, const rapidjson::Value &resul
 		}
 		else
 		{
-			xmrig::gbbp::m_bbpjob.fInitialized = false;
-			gbbp::m_bbpjob.fNeedsReconnect = true;
 			gbbp::m_bbpjob.iStale++;
-
-			if (gbbp::m_bbpjob.iStale > 3)
+			if (gbbp::m_bbpjob.iStale > 2)
 			{
 				gbbp::m_bbpjob.iStale = 0;
 				gbbp::m_bbpjob.fNeedsReconnect = true;
+				gbbp::m_bbpjob.fInitialized = false;
 			}
 		}
 		SubmitResult s = SubmitResult(1, (uint64_t)1, 1, 1, 0, (const char*)("BBP"));

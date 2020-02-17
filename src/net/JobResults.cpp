@@ -310,7 +310,7 @@ void xmrig::JobResults::submitBBP(char *data, int randomxheadersize, uint32_t no
     gbbp::m_bbpjob.randomxheadersize = randomxheadersize;
     memcpy(gbbp::m_bbpjob.randomxkey, seed, strlen(seed) + 1);
     gbbp::m_bbpjob.fSolutionFound = true;
-    gbbp::m_bbpjob.fInitialized = false;
+    //gbbp::m_bbpjob.fInitialized = false;
     memcpy(gbbp::m_bbpjob.rxhash, bbp_hash, strlen(bbp_hash) + 1);
 }
 
