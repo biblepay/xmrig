@@ -56,7 +56,7 @@ public:
         unsigned char nbits[4];
         uint32_t target[8];
         uint8_t target32[32];
-        uint64_t target64;
+		uint64_t target64 = 0;
 		bool fInitialized = false;
 		bool fSolutionFound = false;
         char *userid = (char*)calloc(512, 1);
@@ -71,7 +71,8 @@ public:
         char *XMRAddress = (char*)calloc(512, 1);
 		bool fCharityInitialized = false;
         bool fNeedsReconnect = false;
-		bool fPossiblyNeedsReconnect = false;
+		bool fNeedsReauthorized = false;
+		int64_t iStale = 0;
     };
 
     static bbpjob m_bbpjob;

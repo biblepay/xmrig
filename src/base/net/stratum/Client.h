@@ -103,6 +103,7 @@ private:
     void connect(sockaddr *addr);
     void handshake();
     void login();
+	void Authorize();
     void onClose();
     void parse(char *line, size_t len);
     void parseExtensions(const rapidjson::Value &result);

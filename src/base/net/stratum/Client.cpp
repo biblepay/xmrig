@@ -218,6 +218,12 @@ int64_t xmrig::Client::submit(const JobResult &result)
 
     if (result.clientId == "BBP")
     {
+		if (gbbp::m_bbpjob.fNeedsReauthorized)
+		{
+			this->Authorize();
+			gbbp::m_bbpjob.fNeedsReauthorized = false;
+		}
+
         m_sendBuf.clear();
         int n3 = sprintf(m_sendBuf.data(),
             "{\"id\":4, \"method\": \"mining.submit\", \"params\": [\"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", %d, %d, %d, %d, %d, %d ]}\n",
@@ -292,13 +298,14 @@ void xmrig::Client::deleteLater()
 
 void xmrig::Client::tick(uint64_t now)
 {
-	bool fBBP = strlen(m_user) == 34 ? true : false;
-	if (m_state == ReconnectingState && m_expire && now > m_expire) {
-		return connect();
+
+	if (gbbp::m_bbpjob.iStale > 3 && !gbbp::m_bbpjob.fNeedsReconnect)
+	{
+		gbbp::m_bbpjob.iStale = 0;
+		gbbp::m_bbpjob.fNeedsReconnect = true;
 	}
 
-	if (gbbp::m_bbpjob.fNeedsReconnect && fBBP) {
-		gbbp::m_bbpjob.fNeedsReconnect = false;
+	if (m_state == ReconnectingState && m_expire && now > m_expire) {
 		return connect();
 	}
 
@@ -651,6 +658,33 @@ void xmrig::Client::handshake()
     }
 }
 
+void xmrig::Client::Authorize()
+{
+	m_sendBuf.clear();
+
+	if (strlen(gbbp::m_bbpjob.CharityAddress) == 0)
+	{
+		int n4 = sprintf(m_sendBuf.data(), "{\"id\":7, \"method\": \"mining.altruism\", \"params\": [\"%s\"]}\n", m_user.data());
+		send(n4);
+	}
+
+	m_sendBuf.clear();
+
+	int n1 = sprintf(m_sendBuf.data(), "{\"id\":2, \"method\": \"mining.authorize\", \"params\": [\"%s\", \"%s\"]}\n", m_user.data(), m_password.data());
+	if (strlen(gbbp::m_bbpjob.userid) == 0)
+	{
+		memcpy(gbbp::m_bbpjob.userid, m_user.data(), strlen(m_user.data()) + 1);
+		memcpy(gbbp::m_bbpjob.XMRAddress, m_password.data(), strlen(m_password.data()) + 1);
+	}
+	send(n1);
+
+	m_sendBuf.clear();
+
+	// SUBSCRIBE
+	int n2 = sprintf(m_sendBuf.data(), "{\"id\": 1, \"method\": \"mining.subscribe\", \"params\": []}\n");
+	send(n2);
+}
+
 
 void xmrig::Client::login()
 {
@@ -661,36 +695,19 @@ void xmrig::Client::login()
     auto &allocator = doc.GetAllocator();
     Value params(kObjectType);
     bool fBBP = strlen(m_user) == 34 ? true : false;
+	if (fBBP)
+	{
+		Authorize();
+		return;
+	}
+
+
     params.AddMember("login", m_user.toJSON(), allocator);
     params.AddMember("pass", m_password.toJSON(), allocator);
     if (!fBBP)
             params.AddMember("agent", StringRef(m_agent), allocator);
     
-    if (fBBP)
-    {
-        if (strlen(gbbp::m_bbpjob.CharityAddress) == 0)
-        {
-            m_sendBuf.clear();
-            int n4 = sprintf(m_sendBuf.data(), "{\"id\":7, \"method\": \"mining.altruism\", \"params\": [\"%s\"]}\n", m_user.data());
-            send(n4);
-        }
-
-        m_sendBuf.clear();
-        int n1 = sprintf(m_sendBuf.data(), "{\"id\":2, \"method\": \"mining.authorize\", \"params\": [\"%s\", \"%s\"]}\n", m_user.data(), m_password.data());
-        if (strlen(gbbp::m_bbpjob.userid) == 0)
-        {
-            memcpy(gbbp::m_bbpjob.userid, m_user.data(), strlen(m_user.data()) + 1);
-            memcpy(gbbp::m_bbpjob.XMRAddress, m_password.data(), strlen(m_password.data()) + 1);
-        }
-        send(n1);
-        
-        // SUBSCRIBE
-        m_sendBuf.clear();
-        int n2 = sprintf(m_sendBuf.data(), "{\"id\": 1, \"method\": \"mining.subscribe\", \"params\": []}\n");
-        send(n2);
-        return;
-    }
-
+    
     if (!m_rigId.isNull()) {
         params.AddMember("rigid", m_rigId.toJSON(), allocator);
     }
@@ -1030,7 +1047,7 @@ void xmrig::Client::read(ssize_t nread)
 		const char *err = uv_strerror(static_cast<int>(nread));
 		if (strcmp(err, "end of file") == 0) 
 		{
-			gbbp::m_bbpjob.fPossiblyNeedsReconnect = true;
+			gbbp::m_bbpjob.fNeedsReauthorized = true;
 		}
 		else if (!isQuiet()) {
             LOG_ERR("[%s] read error: \"%s\"", url(), uv_strerror(static_cast<int>(nread)));

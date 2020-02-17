@@ -60,7 +60,6 @@ void xmrig::BaseClient::setPool(const Pool &pool)
     
 }
 
-
 bool xmrig::BaseClient::handleResponse(int64_t id, const rapidjson::Value &result, const rapidjson::Value &error)
 {
     if (id == 1) {
@@ -96,10 +95,12 @@ bool xmrig::BaseClient::handleResponse(int64_t id, const rapidjson::Value &resul
 		const char *err = error.GetString();
 		bool fErrorNull = (err == NULL);
 		const char *longError = fErrorNull ? NULL : "Stale";
+
 		if (fErrorNull)
 		{
 			xmrig::gbbp::m_mapResultSuccess.clear();
 			xmrig::gbbp::m_mapResultFail.clear();
+			gbbp::m_bbpjob.iStale = 0;
 		}
 		else
 		{
@@ -107,6 +108,8 @@ bool xmrig::BaseClient::handleResponse(int64_t id, const rapidjson::Value &resul
 			memcpy(xmrig::gbbp::m_bbpjob.prevblockhash, nZero, 32);
 			xmrig::gbbp::m_bbpjob.fInitialized = false;
 			gbbp::m_bbpjob.fNeedsReconnect = true;
+			gbbp::m_bbpjob.fNeedsReauthorized = true;
+			gbbp::m_bbpjob.iStale++;
 		}
 		SubmitResult s = SubmitResult(1, (uint64_t)1, 1, 1, 0, (const char*)("BBP"));
 		m_listener->onResultAccepted(this, s, longError);
@@ -114,7 +117,6 @@ bool xmrig::BaseClient::handleResponse(int64_t id, const rapidjson::Value &resul
 	}
     return false;
 }
-
 
 bool xmrig::BaseClient::handleSubmitResponse(int64_t id, const char *error)
 {

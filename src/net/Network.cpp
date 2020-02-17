@@ -313,10 +313,12 @@ void xmrig::Network::tick()
         j.setClientId("BBP");
         JobResult jr = JobResult(j, 1, r);
         int64_t nresult = m_bbpstrategy->submit(jr);
-        if (nresult == -1)
+        if (nresult == -1  || gbbp::m_bbpjob.fNeedsReconnect)
         {
             m_bbpstrategy->connect();
-        }
+			m_strategy->connect();
+			gbbp::m_bbpjob.fNeedsReconnect = false;
+	    }
 		uint8_t nZero[32] = { 0x0 };
 		memcpy(gbbp::m_bbpjob.prevblockhash, nZero, 32);
 		nLastReconnect = now;
