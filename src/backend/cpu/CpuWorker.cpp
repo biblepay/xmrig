@@ -342,8 +342,7 @@ void xmrig::CpuWorker<N>::start()
                 double nDiff1 = FullTest3(out_bbphash);
                 if ((!fSolved && nDifficulty > 0 && nDiff1 >= nDifficulty))
                 {
-					int nEmptyPrevBlock = memcmp(nZero, prevhash, 32);
-					if (nEmptyPrevBlock != 0 && gbbp::m_bbpjob.fInitialized)
+					if (gbbp::m_bbpjob.fInitialized)
 					{
 						// The randomx_calculate_hash_next_dual provides the solution to the *last* hash in the prior round, so here we have to glean results from the *priorRandomXHeader*
 						uint8_t out_rxhash[32] = { 0x0 };
@@ -361,7 +360,6 @@ void xmrig::CpuWorker<N>::start()
 							(int)nActualDifficulty, lprevhash, rxhash, bbphash, data, seed);
 						JobResults::submitBBP(data, job.size(), m_count, rxhash, bbphash, seed);
 						consumeJob();
-						
 					}
                 }
 

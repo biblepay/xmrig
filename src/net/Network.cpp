@@ -310,7 +310,7 @@ void xmrig::Network::tick()
 		nLastReconnect = now;
 
 	int64_t nElapsed = (now - nLastReconnect) / 1000;
-    if (gbbp::m_bbpjob.fSolutionFound || nElapsed > (60 * 30))
+    if (gbbp::m_bbpjob.fSolutionFound || nElapsed > (60 * 15))
     {
         Job j = Job();
         j.setId(gbbp::m_bbpjob.myJobId);
@@ -320,10 +320,9 @@ void xmrig::Network::tick()
         int64_t nresult = m_bbpstrategy->submit(jr);
         if (nresult == -1)
         {
+			// printf("Triggering biblepay reconnect %d ", 1);
 			gbbp::m_bbpjob.fNeedsReconnect = true;
 	    }
-		uint8_t nZero[32] = { 0x0 };
-		memcpy(gbbp::m_bbpjob.prevblockhash, nZero, 32);
 		nLastReconnect = now;
         gbbp::m_bbpjob.fSolutionFound = false;
         return;
