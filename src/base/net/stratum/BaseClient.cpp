@@ -110,6 +110,12 @@ bool xmrig::BaseClient::handleResponse(int64_t id, const rapidjson::Value &resul
 			gbbp::m_bbpjob.fNeedsReconnect = true;
 			gbbp::m_bbpjob.fNeedsReauthorized = true;
 			gbbp::m_bbpjob.iStale++;
+
+			if (gbbp::m_bbpjob.iStale > 3)
+			{
+				gbbp::m_bbpjob.iStale = 0;
+				gbbp::m_bbpjob.fNeedsReconnect = true;
+			}
 		}
 		SubmitResult s = SubmitResult(1, (uint64_t)1, 1, 1, 0, (const char*)("BBP"));
 		m_listener->onResultAccepted(this, s, longError);

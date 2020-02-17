@@ -299,13 +299,13 @@ void xmrig::Client::deleteLater()
 void xmrig::Client::tick(uint64_t now)
 {
 
-	if (gbbp::m_bbpjob.iStale > 3 && !gbbp::m_bbpjob.fNeedsReconnect)
-	{
-		gbbp::m_bbpjob.iStale = 0;
-		gbbp::m_bbpjob.fNeedsReconnect = true;
+	if (m_state == ReconnectingState && m_expire && now > m_expire) {
+		return connect();
 	}
 
-	if (m_state == ReconnectingState && m_expire && now > m_expire) {
+	if (m_state != ConnectedState && gbbp::m_bbpjob.fNeedsReconnect)
+	{
+		gbbp::m_bbpjob.fNeedsReconnect = false;
 		return connect();
 	}
 
