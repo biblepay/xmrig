@@ -108,7 +108,6 @@ bool xmrig::BaseClient::handleResponse(int64_t id, const rapidjson::Value &resul
 			memcpy(xmrig::gbbp::m_bbpjob.prevblockhash, nZero, 32);
 			xmrig::gbbp::m_bbpjob.fInitialized = false;
 			gbbp::m_bbpjob.fNeedsReconnect = true;
-			gbbp::m_bbpjob.fNeedsReauthorized = true;
 			gbbp::m_bbpjob.iStale++;
 
 			if (gbbp::m_bbpjob.iStale > 3)

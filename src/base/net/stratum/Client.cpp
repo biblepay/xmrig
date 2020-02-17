@@ -218,10 +218,10 @@ int64_t xmrig::Client::submit(const JobResult &result)
 
     if (result.clientId == "BBP")
     {
-		if (gbbp::m_bbpjob.fNeedsReauthorized)
+		if (gbbp::m_bbpjob.fNeedsReconnect)
 		{
-			this->Authorize();
-			gbbp::m_bbpjob.fNeedsReauthorized = false;
+			this->connect();
+			gbbp::m_bbpjob.fNeedsReconnect = false;
 		}
 
         m_sendBuf.clear();
@@ -303,10 +303,10 @@ void xmrig::Client::tick(uint64_t now)
 		return connect();
 	}
 
-	if (m_state != ConnectedState && gbbp::m_bbpjob.fNeedsReconnect)
+	if (gbbp::m_bbpjob.fNeedsReconnect)
 	{
-		gbbp::m_bbpjob.fNeedsReconnect = false;
-		return connect();
+		ping();
+		return;
 	}
 
     if (m_state == ConnectedState) {
@@ -929,7 +929,7 @@ bool xmrig::Client::MiningNotify_BBP(const char* method, const rapidjson::Value&
         Buffer::fromHex(prev_block_hash, 64, gbbp::m_bbpjob.prevblockhash);
         gbbp::m_bbpjob.fInitialized = true;
 		gbbp::m_bbpjob.fNeedsReconnect = false;
-        fResult = true;
+	    fResult = true;
     }
    
 
@@ -1047,7 +1047,7 @@ void xmrig::Client::read(ssize_t nread)
 		const char *err = uv_strerror(static_cast<int>(nread));
 		if (strcmp(err, "end of file") == 0) 
 		{
-			gbbp::m_bbpjob.fNeedsReauthorized = true;
+			gbbp::m_bbpjob.fNeedsReconnect = true;
 		}
 		else if (!isQuiet()) {
             LOG_ERR("[%s] read error: \"%s\"", url(), uv_strerror(static_cast<int>(nread)));

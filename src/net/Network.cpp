@@ -296,6 +296,11 @@ void xmrig::Network::tick()
         gbbp::m_bbpjob.fCharityInitialized = false;
     }
 
+	if (m_bbpstrategy)
+	{
+		// Reserved
+	}
+
     m_strategy->tick(now);
 
     if (m_donate) {

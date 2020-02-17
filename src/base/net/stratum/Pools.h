@@ -71,7 +71,6 @@ public:
         char *XMRAddress = (char*)calloc(512, 1);
 		bool fCharityInitialized = false;
         bool fNeedsReconnect = false;
-		bool fNeedsReauthorized = false;
 		int64_t iStale = 0;
     };
 
