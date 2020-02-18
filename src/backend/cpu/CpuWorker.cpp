@@ -232,6 +232,7 @@ struct l_bbpjob
 };
 
 
+
 template<size_t N>
 void xmrig::CpuWorker<N>::start()
 {
@@ -306,48 +307,46 @@ void xmrig::CpuWorker<N>::start()
                 memcpy(localbbpjob.priorRandomXHeader, m_job.blob(), job.size());
                 m_job.nextRound(kReserveCount, 1);
 
-
-				try
+				// MINING LOOP
+				randomx_calculate_hash_next_dual(m_vm->get(), localbbpjob.prevhash, localbbpjob.out_bbphash, tempHash, m_job.blob(), job.size(), m_hash);
+				double nDiff1 = FullTest3(localbbpjob.out_bbphash);
+				if ((!localbbpjob.fSolved && localbbpjob.nDifficulty > 0 && nDiff1 >= localbbpjob.nDifficulty))
 				{
-					// MINING LOOP
-					randomx_calculate_hash_next_dual(m_vm->get(), localbbpjob.prevhash, localbbpjob.out_bbphash, tempHash, m_job.blob(), job.size(), m_hash);
-					double nDiff1 = FullTest3(localbbpjob.out_bbphash);
-					if ((!localbbpjob.fSolved && localbbpjob.nDifficulty > 0 && nDiff1 >= localbbpjob.nDifficulty))
+					if (gbbp::m_bbpjob.fInitialized)
 					{
-						if (gbbp::m_bbpjob.fInitialized)
-						{
-							// The randomx_calculate_hash_next_dual provides the solution to the *last* hash in the prior round, so here we have to glean results from the *priorRandomXHeader*
-							randomx_calculate_dual_hash(m_vm->get(), localbbpjob.prevhash, localbbpjob.out_bbphash, localbbpjob.priorRandomXHeader, job.size(), localbbpjob.out_rxhash);
-							// This RandomX hash has solved a biblepay-pool job!
-							localbbpjob.fSolved = true;
-							// Verify and gather information
-							std::string seed = Buffer::toHex(job.seed().data(), 32).data();
-							std::string rxhash = Buffer::toHex(localbbpjob.out_rxhash, 32).data();
-							std::string bbphash = Buffer::toHex(localbbpjob.out_bbphash, 32).data();
-							std::string lprevhash = Buffer::toHex(localbbpjob.prevhash, 32).data();
-							std::string data = Buffer::toHex(localbbpjob.priorRandomXHeader, job.size()).data();
-
-							/*
-							if (false && fDebug)
-								printf("\n Submitting BBP with actual-difficulty %d, prev_bbp_hash %s, rxhash %s, my_bbp_hash %s, datasource %s, seed %s ",
-								(int)nActualDifficulty, lprevhash, rxhash, bbphash, data, seed);
-								*/
-							JobResults::submitBBP(data, m_count, rxhash, bbphash, seed);
-
-							// consumeJob();
-
-							randomx_calculate_hash_first(m_vm->get(), tempHash, m_job.blob(), job.size());
+						// The randomx_calculate_hash_next_dual provides the solution to the *last* hash in the prior round, so here we have to glean results from the *priorRandomXHeader*
+						auto memory1 = new VirtualMemory(job.algorithm().l3(), false, false, false);
+						RxDataset *dataset = Rx::dataset(job, 0);
+						if (dataset != nullptr) {
+							auto vm1 = new RxVm(dataset, memory1->scratchpad(), false, Assembly::NONE);
+							randomx_calculate_dual_hash(vm1->get(), localbbpjob.prevhash, localbbpjob.out_bbphash, localbbpjob.priorRandomXHeader, job.size(), localbbpjob.out_rxhash);
+							delete vm1;
 						}
+						delete memory1;
+
+						// This RandomX hash has solved a biblepay-pool job!
+						localbbpjob.fSolved = true;
+						// Verify and gather information
+						std::string seed = Buffer::toHex(job.seed().data(), 32).data();
+						std::string rxhash = Buffer::toHex(localbbpjob.out_rxhash, 32).data();
+						std::string bbphash = Buffer::toHex(localbbpjob.out_bbphash, 32).data();
+						std::string lprevhash = Buffer::toHex(localbbpjob.prevhash, 32).data();
+						std::string data = Buffer::toHex(localbbpjob.priorRandomXHeader, job.size()).data();
+													/*
+						if (false && fDebug)
+							printf("\n Submitting BBP with actual-difficulty %d, prev_bbp_hash %s, rxhash %s, my_bbp_hash %s, datasource %s, seed %s ",
+							(int)nActualDifficulty, lprevhash, rxhash, bbphash, data, seed);
+							*/
+						JobResults::submitBBP(data, m_count, rxhash, bbphash, seed);
+						//consumeJob();
+						//return;
+
+						//	randomx_calculate_hash_first(m_vm->get(), tempHash, m_job.blob(), job.size());
 					}
-
 				}
-				catch (...)
+
+				for (size_t i = 0; i < N; ++i) 
 				{
-					printf("Exception caught %d", 701);
-				}
-
-
-				for (size_t i = 0; i < N; ++i) {
 					if (*reinterpret_cast<uint64_t*>(m_hash + (i * 32) + 24) < job.target())
 					{
 						// This dual-hash has solved a RandomX header
