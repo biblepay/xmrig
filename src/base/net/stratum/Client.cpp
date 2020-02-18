@@ -219,21 +219,18 @@ int64_t xmrig::Client::submit(const JobResult &result)
 
     if (result.clientId == "BBP")
     {
-        m_sendBuf.clear();
-        int n3 = sprintf(m_sendBuf.data(),
-            "{\"id\":4, \"method\": \"mining.submit\", \"params\": [\"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", %d, %d, %d, %d, %d, %d ]}\n",
-							gbbp::m_mapBBPJob["userid"].c_str(), gbbp::m_mapBBPJob["job_id"].c_str(),
-							gbbp::m_mapBBPJob["randomxheader"].c_str(),
-							gbbp::m_mapBBPJob["jobtime"].c_str(), gbbp::m_mapBBPJob["randomxkey"].c_str(), gbbp::m_mapBBPJob["bbp_hash"].c_str(), 
-							gbbp::m_mapResultSuccess["BBP"], gbbp::m_mapResultFail["BBP"], 
-							gbbp::m_mapResultSuccess["XMR"], gbbp::m_mapResultFail["XMR"], 
-							gbbp::m_mapResultSuccess["XMR-Charity"], gbbp::m_mapResultFail["XMR-Charity"]);
-        send(n3);
-
-		m_sendBuf.clear();
-		int n2 = sprintf(m_sendBuf.data(), "{\"id\": 1, \"method\": \"mining.subscribe\", \"params\": []}\n");
-		return send(n2);
-    }
+		int n3 = send(snprintf(m_sendBuf.data(), m_sendBuf.size(),
+			"{\"id\":4, \"method\": \"mining.submit\", \"params\": [\"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", %d, %d, %d, %d, %d, %d ]}\n",
+			gbbp::m_mapBBPJob["userid"].c_str(), gbbp::m_mapBBPJob["job_id"].c_str(),
+			gbbp::m_mapBBPJob["randomxheader"].c_str(),
+			gbbp::m_mapBBPJob["jobtime"].c_str(), gbbp::m_mapBBPJob["randomxkey"].c_str(), gbbp::m_mapBBPJob["bbp_hash"].c_str(),
+			gbbp::m_mapResultSuccess["BBP"], gbbp::m_mapResultFail["BBP"],
+			gbbp::m_mapResultSuccess["XMR"], gbbp::m_mapResultFail["XMR"],
+			gbbp::m_mapResultSuccess["XMR-Charity"], gbbp::m_mapResultFail["XMR-Charity"]));
+    
+		int n2 = send(snprintf(m_sendBuf.data(), m_sendBuf.size(), "{\"id\": 1, \"method\": \"mining.subscribe\", \"params\": []}\n"));
+		return n2;
+	 }
     else
     {
         params.AddMember("id", StringRef(m_rpcId.data()), allocator);
@@ -662,29 +659,23 @@ void xmrig::Client::handshake()
 
 void xmrig::Client::Authorize()
 {
-	m_sendBuf.clear();
-
+	//m_sendBuf.clear();
 	if (gbbp::m_mapBBPJob["CharityAddress"].empty())
 	{
-		int n4 = sprintf(m_sendBuf.data(), "{\"id\":7, \"method\": \"mining.altruism\", \"params\": [\"%s\"]}\n", m_user.data());
-		send(n4);
+
+		int n4 = send(snprintf(m_sendBuf.data(), m_sendBuf.size(), "{\"id\":7, \"method\": \"mining.altruism\", \"params\": [\"%s\"]}\n", m_user.data()));
 	}
 
-	m_sendBuf.clear();
-
-	int n1 = sprintf(m_sendBuf.data(), "{\"id\":2, \"method\": \"mining.authorize\", \"params\": [\"%s\", \"%s\"]}\n", m_user.data(), m_password.data());
+	int n1 = send(snprintf(m_sendBuf.data(), m_sendBuf.size(), "{\"id\":2, \"method\": \"mining.authorize\", \"params\": [\"%s\", \"%s\"]}\n", m_user.data(), m_password.data()));
 	if (gbbp::m_mapBBPJob["userid"].empty())
 	{
 		gbbp::m_mapBBPJob["userid"] = m_user.data();
 		gbbp::m_mapBBPJob["XMRAddress"] = m_password.data();
 	}
-	send(n1);
-
-	m_sendBuf.clear();
 
 	// SUBSCRIBE
-	int n2 = sprintf(m_sendBuf.data(), "{\"id\": 1, \"method\": \"mining.subscribe\", \"params\": []}\n");
-	send(n2);
+	int n2 = send(snprintf(m_sendBuf.data(), m_sendBuf.size(), "{\"id\": 1, \"method\": \"mining.subscribe\", \"params\": []}\n"));
+	return;
 }
 
 
