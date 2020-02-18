@@ -47,29 +47,14 @@ public:
     
     struct bbpjob
     {
-        char *myJobId = (char*)calloc(128,1);
-        char *randomxheader = (char*)calloc(256,1);
-        char *sBits = (char*)calloc(128, 1);
-        int randomxheadersize = 0;
-        char *randomxkey = (char*)calloc(128, 1);
-        char *jobtime = (char*)calloc(64, 1);
-        unsigned char nbits[4];
-        uint32_t target[8];
-        uint8_t target32[32];
-		uint64_t target64 = 0;
+		uint32_t target[8] = { 0x0 };
+		uint8_t prevblockhash[128] = { 0x0 };
 		bool fInitialized = false;
 		bool fSolutionFound = false;
-        char *userid = (char*)calloc(512, 1);
-        uint8_t prevblockhash[128] = { 0x0 };
 		double difficulty = 0;
 		bool fRequestedRestart = false;
-        char *rxhash = (char*)calloc(256, 1);
-        char *CharityPool = (char*)calloc(512, 1);
-        char *CharityAddress = (char*)calloc(512, 1);
 		int CharityPort = 0;
-        char *CharityName = (char*)calloc(512, 1);
-        char *XMRAddress = (char*)calloc(512, 1);
-		bool fCharityInitialized = false;
+        bool fCharityInitialized = false;
         bool fNeedsReconnect = false;
 		int64_t iStale = 0;
     };
@@ -77,8 +62,7 @@ public:
     static bbpjob m_bbpjob;
 	static std::map<std::string, int> m_mapResultSuccess;
 	static std::map<std::string, int> m_mapResultFail;
-
-
+	static std::map<std::string, std::string> m_mapBBPJob;
 
 private:
     // Disallow creating an instance of this object

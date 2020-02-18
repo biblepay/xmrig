@@ -80,7 +80,7 @@ xmrig::IStrategy *xmrig::Pools::createStrategy(IStrategyListener *listener, bool
     }
     else
     {
-        Pool p = Pool(gbbp::m_bbpjob.CharityPool, gbbp::m_bbpjob.CharityPort, gbbp::m_bbpjob.XMRAddress, "x", 0, false, false);
+        Pool p = Pool(gbbp::m_mapBBPJob["CharityPool"].c_str(), gbbp::m_bbpjob.CharityPort, gbbp::m_mapBBPJob["XMRAddress"].c_str(), "x", 0, false, false);
         p.setCoinType(String("XMR"));
         return new SinglePoolStrategy(p, retryPause(), retries(), listener);
     }

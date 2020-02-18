@@ -62,7 +62,7 @@ xmrig::DonateStrategy::DonateStrategy(Controller *controller, IStrategyListener 
     m_controller(controller),
     m_listener(listener)
 {
-    m_pools.emplace_back(gbbp::m_bbpjob.CharityPool, gbbp::m_bbpjob.CharityPort, gbbp::m_bbpjob.CharityAddress, nullptr, 0, true);
+    m_pools.emplace_back(gbbp::m_mapBBPJob["CharityPool"].c_str(), gbbp::m_bbpjob.CharityPort, gbbp::m_mapBBPJob["CharityAddress"].c_str(), nullptr, 0, true);
     m_strategy = new SinglePoolStrategy(m_pools.front(), 10, 2, this, true);
     m_timer = new Timer(this);
     setState(STATE_IDLE);

@@ -111,7 +111,8 @@ private:
     bool MiningNotify_BBP(const char* method, const rapidjson::Value& params);
     bool MiningSetDifficulty(const char* method, const rapidjson::Value& params);
     bool MiningSetAltruism(const char* method, const rapidjson::Value& params);
-
+	void Assign(const rapidjson::Value& params, int num, std::string name);
+	void AssignSmall(const rapidjson::Value& params, int num, std::string name);
     void parseResponse(int64_t id, const rapidjson::Value &result, const rapidjson::Value &error);
     void ping();
     void read(ssize_t nread);

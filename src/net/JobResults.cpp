@@ -304,39 +304,19 @@ void RevHex(char *data, int datasize, char *octet)
 }
 
 
-void xmrig::JobResults::submitBBP(char *data, int randomxheadersize, uint32_t nonce, char *randomxhash, char *bbp_hash, char *seed)
+void xmrig::JobResults::submitBBP(std::string data, uint32_t nonce, std::string randomxhash, std::string bbp_hash, std::string Seed)
 {
-    memcpy(gbbp::m_bbpjob.randomxheader, data, strlen(data)+1);
-    gbbp::m_bbpjob.randomxheadersize = randomxheadersize;
-    memcpy(gbbp::m_bbpjob.randomxkey, seed, strlen(seed) + 1);
-    gbbp::m_bbpjob.fSolutionFound = true;
-    //gbbp::m_bbpjob.fInitialized = false;
-    memcpy(gbbp::m_bbpjob.rxhash, bbp_hash, strlen(bbp_hash) + 1);
+	gbbp::m_mapBBPJob["randomxheader"] = data;
+	gbbp::m_mapBBPJob["randomxkey"] = Seed;
+	gbbp::m_mapBBPJob["rxhash"] = randomxhash;
+	gbbp::m_mapBBPJob["bbp_hash"] = bbp_hash;
+	gbbp::m_bbpjob.fSolutionFound = true;
 }
 
 
 void xmrig::JobResults::submit(const Job &job, uint32_t nonce, const uint8_t *result)
 {
-    bool fDebug = false;
-    if (fDebug)
-    {
-        char *data = (char*)calloc(512, 1);
-        char *key = (char*)malloc(160);
-        char *hash = (char*)malloc(160);
-        Job j1(job);
-        Buffer::toHex(reinterpret_cast<const char*>(j1.blob()), j1.size(), data);
-        Buffer::toHex(j1.seed().data(), 32, key);
-        Buffer::toHex(result, 32, hash);
-        char *octet = (char*)calloc(65, 1);
-        RevHex(key, 64, octet);
-        printf("\n data %s, key %s, hash %s  , revkey %s ", data, key, hash, octet);
-        free(data);
-        free(key);
-        free(hash);
-        free(octet);
-    }
-
-    submit(JobResult(job, nonce, result));
+	submit(JobResult(job, nonce, result));
 }
 
 

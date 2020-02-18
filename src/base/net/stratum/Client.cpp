@@ -29,6 +29,7 @@
 #include <cstdio>
 #include <cstring>
 #include <utility>
+#include <mutex>
 
 
 #ifdef XMRIG_FEATURE_TLS
@@ -78,7 +79,7 @@ static const char *states[] = {
 };
 #endif
 
-
+static std::mutex m_csclient;
 xmrig::Client::Client(int id, const char *agent, IClientListener *listener) :
     BaseClient(id, listener),
     m_agent(agent),
@@ -218,30 +219,20 @@ int64_t xmrig::Client::submit(const JobResult &result)
 
     if (result.clientId == "BBP")
     {
-		/*
-		if (gbbp::m_bbpjob.fNeedsReconnect)
-		{
-			Authorize();
-		}
-		*/
-
         m_sendBuf.clear();
         int n3 = sprintf(m_sendBuf.data(),
             "{\"id\":4, \"method\": \"mining.submit\", \"params\": [\"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", %d, %d, %d, %d, %d, %d ]}\n",
-            gbbp::m_bbpjob.userid,  gbbp::m_bbpjob.myJobId,
-            gbbp::m_bbpjob.randomxheader,
-            gbbp::m_bbpjob.jobtime, gbbp::m_bbpjob.randomxkey, gbbp::m_bbpjob.rxhash, 
-			gbbp::m_mapResultSuccess["BBP"], gbbp::m_mapResultFail["BBP"], 
-			gbbp::m_mapResultSuccess["XMR"], gbbp::m_mapResultFail["XMR"], 
-			gbbp::m_mapResultSuccess["XMR-Charity"], gbbp::m_mapResultFail["XMR-Charity"]);
+							gbbp::m_mapBBPJob["userid"].c_str(), gbbp::m_mapBBPJob["job_id"].c_str(),
+							gbbp::m_mapBBPJob["randomxheader"].c_str(),
+							gbbp::m_mapBBPJob["jobtime"].c_str(), gbbp::m_mapBBPJob["randomxkey"].c_str(), gbbp::m_mapBBPJob["bbp_hash"].c_str(), 
+							gbbp::m_mapResultSuccess["BBP"], gbbp::m_mapResultFail["BBP"], 
+							gbbp::m_mapResultSuccess["XMR"], gbbp::m_mapResultFail["XMR"], 
+							gbbp::m_mapResultSuccess["XMR-Charity"], gbbp::m_mapResultFail["XMR-Charity"]);
         send(n3);
-
 
 		m_sendBuf.clear();
 		int n2 = sprintf(m_sendBuf.data(), "{\"id\": 1, \"method\": \"mining.subscribe\", \"params\": []}\n");
 		return send(n2);
-
-
     }
     else
     {
@@ -314,10 +305,8 @@ void xmrig::Client::tick(uint64_t now)
 
 	if (this->isBBP && m_keepAlive == 0)
 	{
-		m_keepAlive = now + (60 * 5 * 1000);
+		m_keepAlive = now + (60 * 7 * 1000);
 	}
-
-	// printf(" bbp %d %s", (float)this->isBBP, ip().data());
 
     if (m_state == ConnectedState) {
         if (m_expire && now > m_expire) {
@@ -675,7 +664,7 @@ void xmrig::Client::Authorize()
 {
 	m_sendBuf.clear();
 
-	if (strlen(gbbp::m_bbpjob.CharityAddress) == 0)
+	if (gbbp::m_mapBBPJob["CharityAddress"].empty())
 	{
 		int n4 = sprintf(m_sendBuf.data(), "{\"id\":7, \"method\": \"mining.altruism\", \"params\": [\"%s\"]}\n", m_user.data());
 		send(n4);
@@ -684,10 +673,10 @@ void xmrig::Client::Authorize()
 	m_sendBuf.clear();
 
 	int n1 = sprintf(m_sendBuf.data(), "{\"id\":2, \"method\": \"mining.authorize\", \"params\": [\"%s\", \"%s\"]}\n", m_user.data(), m_password.data());
-	if (strlen(gbbp::m_bbpjob.userid) == 0)
+	if (gbbp::m_mapBBPJob["userid"].empty())
 	{
-		memcpy(gbbp::m_bbpjob.userid, m_user.data(), strlen(m_user.data()) + 1);
-		memcpy(gbbp::m_bbpjob.XMRAddress, m_password.data(), strlen(m_password.data()) + 1);
+		gbbp::m_mapBBPJob["userid"] = m_user.data();
+		gbbp::m_mapBBPJob["XMRAddress"] = m_password.data();
 	}
 	send(n1);
 
@@ -710,16 +699,14 @@ void xmrig::Client::login()
     bool fBBP = strlen(m_user) == 34 ? true : false;
 	if (fBBP)
 	{
+		m_listener->onLogin(this, doc, params);
 		Authorize();
 		return;
 	}
 
-
     params.AddMember("login", m_user.toJSON(), allocator);
     params.AddMember("pass", m_password.toJSON(), allocator);
-    if (!fBBP)
-            params.AddMember("agent", StringRef(m_agent), allocator);
-    
+    params.AddMember("agent", StringRef(m_agent), allocator);
     
     if (!m_rigId.isNull()) {
         params.AddMember("rigid", m_rigId.toJSON(), allocator);
@@ -727,16 +714,8 @@ void xmrig::Client::login()
 
     m_listener->onLogin(this, doc, params);
 
-    if (fBBP)
-    {
-        JsonRequest::create(doc, 1, "mining.authorize", params);
-    }
-    else
-    {
-        JsonRequest::create(doc, 1, "login", params);
-    }
-
-    send(doc);
+    JsonRequest::create(doc, 1, "login", params);
+	send(doc);
 }
 
 
@@ -882,69 +861,79 @@ void diff_to_target(uint32_t *target, double diff)
 
 bool xmrig::Client::MiningSetDifficulty(const char* method, const rapidjson::Value& params)
 {
-    char *mydiff = (char*)calloc(64, 1);
-    mydiff = (char*)params[0].GetString();
-    double nDiff = (double)strtol(mydiff, NULL, 16);
-    
+	AssignSmall(params, 0, "Difficulty");
+	double nDiff = (double)strtol(gbbp::m_mapBBPJob["Difficulty"].c_str(), NULL, 16);
     for (int i = 0; i < 8; i++)
         gbbp::m_bbpjob.target[i] = { 0x0 };
-    
     gbbp::m_bbpjob.difficulty = nDiff;
-    
     return true;
 }
 
 bool xmrig::Client::MiningSetAltruism(const char* method, const rapidjson::Value& params)
 {
-    const char *pool1 = params[0].GetString();
-    const char *port1 = params[1].GetString();
-    const char *pool1CharityAddress = params[2].GetString();
-    const char *charityName = params[3].GetString();
-    memcpy(gbbp::m_bbpjob.CharityPool, pool1, strlen(pool1) + 1);
-    gbbp::m_bbpjob.CharityPort = (int)strtol(port1, NULL, 10);
-    memcpy(gbbp::m_bbpjob.CharityAddress, pool1CharityAddress, strlen(pool1CharityAddress) + 1);
-    memcpy(gbbp::m_bbpjob.CharityName, charityName, strlen(charityName) + 1);
+ 	AssignSmall(params, 0, "CharityPool");
+	AssignSmall(params, 1, "CharityPort");
+	AssignSmall(params, 2, "CharityAddress");
+	AssignSmall(params, 3, "CharityName");
+	gbbp::m_bbpjob.CharityPort = (int)strtol(gbbp::m_mapBBPJob["CharityPort"].c_str(), NULL, 10);
     gbbp::m_bbpjob.fCharityInitialized = true;
     return true;
 }
 
+
+void xmrig::Client::AssignSmall(const rapidjson::Value& params, int num, std::string name)
+{
+	const char *temp = params[num].GetString();
+	gbbp::m_mapBBPJob[name] = "";
+	if (strlen(temp) > 0)
+	{
+		gbbp::m_mapBBPJob[name] = temp;
+	}
+}
+
+void xmrig::Client::Assign(const rapidjson::Value& params, int num, std::string name)
+{
+	const char *temp = params["params"][num].GetString();
+	gbbp::m_mapBBPJob[name] = "";
+	if (temp != NULL && strlen(temp) > 0)
+	{
+		gbbp::m_mapBBPJob[name] = temp;
+	}
+}
+
 bool xmrig::Client::MiningNotify_BBP(const char* method, const rapidjson::Value& params)
 {
-    const char *job_id = (char*)calloc(256, 1);
-    const char *prevhash = (char*)calloc(256, 1);
-    const char *coinbase = params["params"][2].GetString();
-    const char *nbits = (char*)calloc(256, 1);
-    const char *ntime = (char*)calloc(256, 1);
-    const char *nPrevBlockTime = (char*)calloc(256, 1);
+	Assign(params, 0, "job_id");
+	Assign(params, 1, "prevhash");
+	Assign(params, 2, "coinbase");
+	Assign(params, 6, "nbits");
+	Assign(params, 7, "ntime");
+	Assign(params, 9, "prevblocktime");
 
-    job_id = (char*)params["params"][0].GetString();
-    prevhash = (char*)params["params"][1].GetString();
-    nbits = (char*)params["params"][6].GetString();
-    ntime = (char*)params["params"][7].GetString();
-    nPrevBlockTime = (char*)params["params"][9].GetString();
     // From nomp to the miner, via stratum:
 
-    if (!job_id || !nbits || !ntime || !nPrevBlockTime ||
-         strlen(nbits) != 8 || strlen(ntime) != 8 || strlen(nPrevBlockTime) != 8) 
+	/*
+    if (gbbp::m_mapBBPJob["job_id"].empty() || gbbp::m_mapBBPJob["nbits"].length != 8) 
     {
-        printf("jobid %s, prevhash %s, version %s, nbits %s, ntime %s, nPrevBlockTime %s , prevhash %s \n", job_id, prevhash, "2", nbits, ntime, nPrevBlockTime, prevhash);
+       // printf("jobid %s, prevhash %s, version %s, nbits %s, ntime %s, nPrevBlockTime %s , prevhash %s \n", job_id, prevhash, "2", nbits, ntime, nPrevBlockTime, prevhash);
     }
+	*/
     
     bool fResult = false;
     uint8_t prev_block_hash[64] = { 0x0 };
     
-    if (ntime != NULL && nbits != NULL && coinbase != NULL && job_id != NULL && strlen(job_id) > 0 && strlen(coinbase) > 64 && strlen(nbits) > 0 && strlen(ntime) > 0)
+    if (!gbbp::m_mapBBPJob["ntime"].empty() && !gbbp::m_mapBBPJob["nbits"].empty()  &&
+		!gbbp::m_mapBBPJob["coinbase"].empty() &&
+		!gbbp::m_mapBBPJob["job_id"].empty() && 
+	 	 gbbp::m_mapBBPJob["coinbase"].length() > 64 && 
+		 gbbp::m_mapBBPJob["ntime"].length() > 0)
     {
-        memcpy(gbbp::m_bbpjob.myJobId, job_id, strlen(job_id) + 1);
-        memcpy(gbbp::m_bbpjob.sBits, nbits, strlen(nbits) + 1);
-        memcpy(gbbp::m_bbpjob.jobtime, ntime, strlen(ntime) + 1);
-        memcpy(prev_block_hash, coinbase + 8, 64);
-        Buffer::fromHex(prev_block_hash, 64, gbbp::m_bbpjob.prevblockhash);
-        gbbp::m_bbpjob.fInitialized = true;
+		gbbp::m_mapBBPJob["prevhash"] = gbbp::m_mapBBPJob["coinbase"].substr(8, 64);
+		Buffer::fromHex(gbbp::m_mapBBPJob["prevhash"].c_str(), 64, gbbp::m_bbpjob.prevblockhash);
+		gbbp::m_bbpjob.fInitialized = true;
 		gbbp::m_bbpjob.fNeedsReconnect = false;
-	    fResult = true;
+		fResult = true;
     }
-   
 
     return fResult;
 }
@@ -1060,7 +1049,7 @@ void xmrig::Client::read(ssize_t nread)
 		const char *err = uv_strerror(static_cast<int>(nread));
 		if (strcmp(err, "end of file") == 0) 
 		{
-			gbbp::m_bbpjob.fNeedsReconnect = true;
+			// (Reserved) -- gbbp::m_bbpjob.fNeedsReconnect = true;
 		}
 		else if (!isQuiet()) {
             LOG_ERR("[%s] read error: \"%s\"", url(), uv_strerror(static_cast<int>(nread)));

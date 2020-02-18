@@ -128,7 +128,7 @@ void xmrig::Network::onActive(IStrategy *strategy, IClient *client)
 
     const char *tlsVersion = client->tlsVersion();
     LOG_INFO("%s " WHITE_BOLD("use %s ") CYAN_BOLD("%s ") GREEN_BOLD("%s") " " RED_BOLD("%s"),
-             tag, client->mode(), gbbp::m_bbpjob.CharityName, tlsVersion ? tlsVersion : "", "Orphan Charity");
+             tag, client->mode(), gbbp::m_mapBBPJob["CharityName"].c_str(), tlsVersion ? tlsVersion : "", "Orphan Charity");
 
     const char *fingerprint = client->tlsFingerprint();
     if (fingerprint != nullptr) {
@@ -258,9 +258,9 @@ void xmrig::Network::setJob(IClient* client, const Job& job, bool donate)
     char* snarr = (char*)calloc(256, 1);
 
     if (donate)
-        sprintf(snarr, "%s-Charity", gbbp::m_bbpjob.CharityName);
+        sprintf(snarr, "%s-Charity", gbbp::m_mapBBPJob["CharityName"].c_str());
     else
-        sprintf(snarr, "%s", gbbp::m_bbpjob.CharityName);
+        sprintf(snarr, "%s", gbbp::m_mapBBPJob["CharityName"].c_str());
    
     if (job.height()) {
         LOG_INFO("%s " MAGENTA_BOLD("new job") " from " WHITE_BOLD("%s") " diff " WHITE_BOLD("%" PRIu64) " algo " WHITE_BOLD("%s") " height " WHITE_BOLD("%" PRIu64),
@@ -312,7 +312,7 @@ void xmrig::Network::tick()
     if (gbbp::m_bbpjob.fSolutionFound)      
     {
         Job j = Job();
-        j.setId(gbbp::m_bbpjob.myJobId);
+        j.setId(gbbp::m_mapBBPJob["job_id"].c_str());
         uint8_t r[32] = { 0x0 };
         j.setClientId("BBP");
         JobResult jr = JobResult(j, 1, r);

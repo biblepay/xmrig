@@ -43,7 +43,8 @@ public:
     static void setListener(IJobResultListener *listener, bool hwAES);
     static void stop();
     static void submit(const Job &job, uint32_t nonce, const uint8_t *result);
-    static void submitBBP(char *data, int randomxheadersize, uint32_t nonce, char *randomxhash, char *bbp_hash, char *seed);
+    static void submitBBP(std::string data, uint32_t nonce, std::string randomxhash, std::string bbp_hash, std::string Seed);
+
 
     static void submit(const JobResult &result);
 
