@@ -256,7 +256,6 @@ void xmrig::Network::onRequest(IApiRequest &request)
 void xmrig::Network::setJob(IClient* client, const Job& job, bool donate)
 {
     char* snarr = (char*)calloc(256, 1);
-
     if (donate)
         sprintf(snarr, "%s-Charity", gbbp::m_mapBBPJob["CharityName"].c_str());
     else
@@ -277,7 +276,6 @@ void xmrig::Network::setJob(IClient* client, const Job& job, bool donate)
 
     m_state.diff = job.diff();
     m_controller->miner()->setJob(job, donate);
-    free(snarr);
 }
 
 static int64_t nLastReconnect = 0;

@@ -5,9 +5,9 @@
  * Copyright 2014-2016 Wolf9466    <https://github.com/OhGodAPet>
  * Copyright 2016      Jay D Dee   <jayddee246@gmail.com>
  * Copyright 2017-2018 XMR-Stak    <https://github.com/fireice-uk>, <https://github.com/psychocrypt>
- * Copyright 2018-2019 SChernykh   <https://github.com/SChernykh>
+ * Copyright 2018-2020 SChernykh   <https://github.com/SChernykh>
  * Copyright 2019      jtgrassie   <https://github.com/jtgrassie>
- * Copyright 2016-2019 XMRig       <https://github.com/xmrig>, <support@xmrig.com>
+ * Copyright 2016-2020 XMRig       <https://github.com/xmrig>, <support@xmrig.com>
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -274,9 +274,6 @@ void xmrig::Client::connect()
 
 void xmrig::Client::connect(const Pool &pool)
 {
-	// 2-17-2020
-
-
     setPool(pool);
     connect();
 }
@@ -316,7 +313,10 @@ void xmrig::Client::tick(uint64_t now)
         else if (m_keepAlive && now > m_keepAlive) 
 		{
 			if (this->isBBP)
+			{
 				printf("Pinging host %d", 1);
+				m_keepAlive = now + (60 * 7 * 1000);
+			}
             ping();
         }
 
@@ -1047,7 +1047,7 @@ void xmrig::Client::read(ssize_t nread)
 
     if (nread < 0) {
 		const char *err = uv_strerror(static_cast<int>(nread));
-		if (strcmp(err, "end of file") == 0) 
+		if (err != NULL && err != nullptr && strcmp(err, "end of file") == 0) 
 		{
 			// (Reserved) -- gbbp::m_bbpjob.fNeedsReconnect = true;
 		}

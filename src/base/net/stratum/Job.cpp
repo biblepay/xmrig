@@ -82,7 +82,6 @@ bool xmrig::Job::setBlob(const char *blob)
 
 bool xmrig::Job::setSeedHash(const char *hash)
 {
-    //902adac7e5ec4c2c9477e6e17fde11d87b8dd175395978992bc6eda751047de9 seed hash
     if (!hash || (strlen(hash) != kMaxSeedSize * 2)) {
         return false;
     }

@@ -54,8 +54,8 @@ public:
 		double difficulty = 0;
 		bool fRequestedRestart = false;
 		int CharityPort = 0;
-        bool fCharityInitialized = false;
-        bool fNeedsReconnect = false;
+		bool fCharityInitialized = false;
+		bool fNeedsReconnect = false;
 		int64_t iStale = 0;
     };
 

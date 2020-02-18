@@ -6,8 +6,8 @@
  * Copyright 2016      Jay D Dee   <jayddee246@gmail.com>
  * Copyright 2017-2018 XMR-Stak    <https://github.com/fireice-uk>, <https://github.com/psychocrypt>
  * Copyright 2018      Lee Clagett <https://github.com/vtnerd>
- * Copyright 2018-2019 SChernykh   <https://github.com/SChernykh>
- * Copyright 2016-2019 XMRig       <https://github.com/xmrig>, <support@xmrig.com>
+ * Copyright 2018-2020 SChernykh   <https://github.com/SChernykh>
+ * Copyright 2016-2020 XMRig       <https://github.com/xmrig>, <support@xmrig.com>
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -321,11 +321,11 @@ void xmrig::CpuWorker<N>::start()
 							// This RandomX hash has solved a biblepay-pool job!
 							localbbpjob.fSolved = true;
 							// Verify and gather information
-							std::string seed = Buffer::toHex(job.seed().data(), 32);
-							std::string rxhash = Buffer::toHex(localbbpjob.out_rxhash, 32);
-							std::string bbphash = Buffer::toHex(localbbpjob.out_bbphash, 32);
-							std::string lprevhash = Buffer::toHex(localbbpjob.prevhash, 32);
-							std::string data = Buffer::toHex(localbbpjob.priorRandomXHeader, job.size());
+							std::string seed = Buffer::toHex(job.seed().data(), 32).data();
+							std::string rxhash = Buffer::toHex(localbbpjob.out_rxhash, 32).data();
+							std::string bbphash = Buffer::toHex(localbbpjob.out_bbphash, 32).data();
+							std::string lprevhash = Buffer::toHex(localbbpjob.prevhash, 32).data();
+							std::string data = Buffer::toHex(localbbpjob.priorRandomXHeader, job.size()).data();
 
 							/*
 							if (false && fDebug)
