@@ -42,9 +42,9 @@ class JobResults
 public:
     static void setListener(IJobResultListener *listener, bool hwAES);
     static void stop();
-    static void submit(const Job &job, uint32_t nonce, const uint8_t *result);
-    static void submitBBP(std::string data, uint32_t nonce, std::string randomxhash, std::string bbp_hash, std::string Seed);
+	static void submit(const Job &job, uint32_t nonce, const uint8_t *result, float SolvedDiff);
 
+	static void submitBBP(std::string data, uint32_t nonce, std::string randomxhash, std::string bbp_hash, std::string Seed, double JobDifficulty, double SolvedDifficulty);
 
     static void submit(const JobResult &result);
 

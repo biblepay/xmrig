@@ -40,34 +40,6 @@ class IJsonReader;
 class IStrategy;
 class IStrategyListener;
 
-class gbbp
-{
-
-public:
-    
-    struct bbpjob
-    {
-		uint32_t target[8] = { 0x0 };
-		uint8_t prevblockhash[128] = { 0x0 };
-		bool fInitialized = false;
-		bool fSolutionFound = false;
-		double difficulty = 0;
-		bool fRequestedRestart = false;
-		int CharityPort = 0;
-		bool fCharityInitialized = false;
-		bool fNeedsReconnect = false;
-		int64_t iStale = 0;
-    };
-
-    static bbpjob m_bbpjob;
-	static std::map<std::string, int> m_mapResultSuccess;
-	static std::map<std::string, int> m_mapResultFail;
-	static std::map<std::string, std::string> m_mapBBPJob;
-
-private:
-    // Disallow creating an instance of this object
-    gbbp () {}
-};
 
 class Pools
 {

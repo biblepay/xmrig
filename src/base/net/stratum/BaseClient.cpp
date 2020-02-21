@@ -29,6 +29,7 @@
 #include "base/net/stratum/SubmitResult.h"
 #include "rapidjson/document.h"
 #include "base/net/stratum/Pools.h"
+#include "base/net/stratum/BiblePay.h"
 
 
 namespace xmrig {
@@ -82,13 +83,6 @@ bool xmrig::BaseClient::handleResponse(int64_t id, const rapidjson::Value &resul
         return true;
     }
 
-    if (id == 4)
-    {
-        SubmitResult s = SubmitResult(1, (uint64_t)1, 1, 1, 0, (const char*)("BBP"));
-        m_listener->onResultAccepted(this, s, error["error"].GetString());
-        return true;
-    }
-
 	if (id == 100)
 	{
 		// Nomp reply to onSubmit
@@ -112,7 +106,11 @@ bool xmrig::BaseClient::handleResponse(int64_t id, const rapidjson::Value &resul
 				gbbp::m_bbpjob.fInitialized = false;
 			}
 		}
-		SubmitResult s = SubmitResult(1, (uint64_t)1, 1, 1, 0, (const char*)("BBP"));
+		SubmitResult s = SubmitResult(1, (uint64_t)gbbp::m_bbpjob.JobDifficulty, gbbp::m_bbpjob.SolvedDifficulty, 1, 0, (const char*)("BBP"));
+		s.elapsed = Chrono::steadyMSecs() - gbbp::m_bbpjob.nSubmitTime;
+		if (s.elapsed < 0) 
+			s.elapsed = 1;
+
 		m_listener->onResultAccepted(this, s, longError);
 		return true;
 	}

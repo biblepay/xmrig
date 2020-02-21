@@ -32,6 +32,7 @@
 #include "net/JobResult.h"
 #include "base/net/stratum/Pools.h"
 #include "base/net/stratum/Client.h"
+#include "base/net/stratum/BiblePay.h"
 
 #ifdef XMRIG_ALGO_RANDOMX
 #   include "crypto/randomx/randomx.h"
@@ -56,8 +57,6 @@
 
 
 namespace xmrig {
-
-static xmrig::gbbp::bbpjob m_bbpjob;
 
 
 #if defined(XMRIG_FEATURE_OPENCL) || defined(XMRIG_FEATURE_CUDA)
@@ -304,19 +303,23 @@ void RevHex(char *data, int datasize, char *octet)
 }
 
 
-void xmrig::JobResults::submitBBP(std::string data, uint32_t nonce, std::string randomxhash, std::string bbp_hash, std::string Seed)
+void xmrig::JobResults::submitBBP(std::string data, uint32_t nonce, std::string randomxhash, std::string bbp_hash, std::string Seed, double JobDifficulty, double SolvedDifficulty)
 {
 	gbbp::m_mapBBPJob["randomxheader"] = data;
 	gbbp::m_mapBBPJob["randomxkey"] = Seed;
 	gbbp::m_mapBBPJob["rxhash"] = randomxhash;
 	gbbp::m_mapBBPJob["bbp_hash"] = bbp_hash;
+	gbbp::m_bbpjob.JobDifficulty = JobDifficulty;
+	gbbp::m_bbpjob.SolvedDifficulty = SolvedDifficulty;
 	gbbp::m_bbpjob.fSolutionFound = true;
 }
 
 
-void xmrig::JobResults::submit(const Job &job, uint32_t nonce, const uint8_t *result)
+void xmrig::JobResults::submit(const Job &job, uint32_t nonce, const uint8_t *result, float SolvedDiff)
 {
-	submit(JobResult(job, nonce, result));
+	JobResult r1(job, nonce, result);
+	r1.SolvedDiff = SolvedDiff;
+	submit(r1);
 }
 
 

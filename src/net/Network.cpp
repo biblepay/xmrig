@@ -48,6 +48,7 @@
 #include "net/Network.h"
 #include "net/strategies/DonateStrategy.h"
 #include "rapidjson/document.h"
+#include "base/net/stratum/BiblePay.h"
 
 
 #ifdef XMRIG_FEATURE_API
@@ -218,13 +219,13 @@ void xmrig::Network::onResultAccepted(IStrategy *, IClient *, const SubmitResult
     m_state.add(result, error);
 
     if (error) {
-        LOG_INFO("%s " RED_BOLD("rejected") " (%" PRId64 "/%" PRId64 ") diff " WHITE_BOLD("%" PRIu64) " " GREEN_BOLD("%s") " " RED("\"%s\"") " " BLACK_BOLD("(%" PRIu64 " ms)"),
-                 backend_tag(result.backend), m_state.accepted, m_state.rejected, result.diff, result.Source, error, result.elapsed);
+        LOG_INFO("%s " RED_BOLD("rejected") " (%" PRId64 "/%" PRId64 ") diff " WHITE_BOLD("%" PRIu64) " [%d] " GREEN_BOLD("%s") " " RED("\"%s\"") " " BLACK_BOLD("(%" PRIu64 " ms)"),
+                 backend_tag(result.backend), m_state.accepted, m_state.rejected, result.diff, result.actualDiff, result.Source, error, result.elapsed);
 		gbbp::m_mapResultFail[result.Source]++;
     }
     else {
-        LOG_INFO("%s " GREEN_BOLD("accepted") " (%" PRId64 "/%" PRId64 ") diff " WHITE_BOLD("%" PRIu64) " " GREEN_BOLD("%s") " " BLACK_BOLD("(%" PRIu64 " ms)"),
-                 backend_tag(result.backend), m_state.accepted, m_state.rejected, result.diff, result.Source, result.elapsed);
+        LOG_INFO("%s " GREEN_BOLD("accepted") " (%" PRId64 "/%" PRId64 ") diff " WHITE_BOLD("%" PRIu64) " [%d] " GREEN_BOLD("%s") " " BLACK_BOLD("(%" PRIu64 " ms)"),
+                 backend_tag(result.backend), m_state.accepted, m_state.rejected, result.diff, result.actualDiff, result.Source, result.elapsed);
 		gbbp::m_mapResultSuccess[result.Source]++;
     }
 }
@@ -306,7 +307,6 @@ void xmrig::Network::tick()
 	if (nLastReconnect == 0)
 		nLastReconnect = now;
 
-	//int64_t nElapsed = (now - nLastReconnect) / 1000; || nElapsed > (60 * 15))
     if (gbbp::m_bbpjob.fSolutionFound)      
     {
         Job j = Job();

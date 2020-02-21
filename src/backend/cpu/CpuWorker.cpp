@@ -28,6 +28,7 @@
 #include <thread>
 #include <mutex>
 #include <map>
+#include <cmath>
 
 #include "backend/cpu/CpuWorker.h"
 #include "core/Miner.h"
@@ -38,7 +39,7 @@
 #include "crypto/rx/Rx.h"
 #include "crypto/rx/RxVm.h"
 #include "net/JobResults.h"
-
+#include "base/net/stratum/BiblePay.h"
 
 #ifdef XMRIG_ALGO_RANDOMX
 #   include "crypto/randomx/randomx.h"
@@ -48,11 +49,11 @@
 namespace xmrig {
 
 static constexpr uint32_t kReserveCount = 32768;
+
 xmrig::gbbp::bbpjob m_bbpjob;
 std::map<std::string, int> xmrig::gbbp::m_mapResultSuccess;
 std::map<std::string, int> xmrig::gbbp::m_mapResultFail;
 std::map<std::string, std::string> xmrig::gbbp::m_mapBBPJob;
-
 
 
 } // namespace xmrig
@@ -175,62 +176,6 @@ bool xmrig::CpuWorker<N>::selfTest()
     return false;
 }
 
-bool fulltest2(uint8_t hash[], uint8_t target[])
-{
-    int i = 0;
-    bool rc = true;
-
-    for (i = 31; i >= 0; i--) {
-        if (hash[i] > target[i]) {
-            rc = false;
-            break;
-        }
-        if (hash[i] < target[i]) {
-            rc = true;
-            break;
-        }
-    }
-
-    return rc;
-}
-
-double FullTest3(uint8_t hash[])
-{
-    // Converts the RandomX solution hash over to the original bitcoin difficulty level
-    uint64_t nAdjHash = *reinterpret_cast<uint64_t*>(hash + 24);
-    double nDiff = 0xFFFFFFFFFFFFULL / (nAdjHash + .01);
-    return nDiff;
-}
-
-
-void phex(uint8_t data[], char *name)
-{
-    char *d1 = (char*)malloc(160);
-    xmrig::Buffer::toHex(reinterpret_cast<const char*>(data), 32, d1);
-    printf(" H:%s Val:%s ", name, d1);
-}
-
-void phex(uint64_t data[], char* name)
-{
-    char *d1 = (char*)malloc(160);
-    xmrig::Buffer::toHex(reinterpret_cast<const char*>(data), 32, d1);
-    printf(" H:%s Val:%s ", name, d1);
-}
-
-
-static std::mutex m_minermutex;
-struct l_bbpjob
-{
-	uint8_t prevhash[64] = { 0x0 };
-	uint8_t priorRandomXHeader[160] = { 0x0 };
-	uint8_t out_bbphash[64] = { 0x0 };
-	uint8_t out_rxhash[32] = { 0x0 };
-	bool fSolved = false;
-	double nDifficulty = 0;
-	double nActualDifficulty = 0;
-	bool fDebug = true;
-};
-
 
 
 template<size_t N>
@@ -283,7 +228,6 @@ void xmrig::CpuWorker<N>::start()
             {
                 current_job_nonces[i] = *m_job.nonce(i);
             }
-            
 
 #           ifdef XMRIG_ALGO_RANDOMX
             if (job.algorithm().family() == Algorithm::RANDOM_X) {
@@ -316,14 +260,13 @@ void xmrig::CpuWorker<N>::start()
 					{
 						// The randomx_calculate_hash_next_dual provides the solution to the *last* hash in the prior round, so here we have to glean results from the *priorRandomXHeader*
 						auto memory1 = new VirtualMemory(job.algorithm().l3(), false, false, false);
-						RxDataset *dataset = Rx::dataset(job, 0);
-						if (dataset != nullptr) {
-							auto vm1 = new RxVm(dataset, memory1->scratchpad(), false, Assembly::NONE);
+						RxDataset *dataset1 = Rx::dataset(job, 0);
+						if (dataset1 != nullptr) {
+							auto vm1 = new RxVm(dataset1, memory1->scratchpad(), false, Assembly::NONE);
 							randomx_calculate_dual_hash(vm1->get(), localbbpjob.prevhash, localbbpjob.out_bbphash, localbbpjob.priorRandomXHeader, job.size(), localbbpjob.out_rxhash);
 							delete vm1;
 						}
 						delete memory1;
-
 						// This RandomX hash has solved a biblepay-pool job!
 						localbbpjob.fSolved = true;
 						// Verify and gather information
@@ -332,16 +275,7 @@ void xmrig::CpuWorker<N>::start()
 						std::string bbphash = Buffer::toHex(localbbpjob.out_bbphash, 32).data();
 						std::string lprevhash = Buffer::toHex(localbbpjob.prevhash, 32).data();
 						std::string data = Buffer::toHex(localbbpjob.priorRandomXHeader, job.size()).data();
-													/*
-						if (false && fDebug)
-							printf("\n Submitting BBP with actual-difficulty %d, prev_bbp_hash %s, rxhash %s, my_bbp_hash %s, datasource %s, seed %s ",
-							(int)nActualDifficulty, lprevhash, rxhash, bbphash, data, seed);
-							*/
-						JobResults::submitBBP(data, m_count, rxhash, bbphash, seed);
-						//consumeJob();
-						//return;
-
-						//	randomx_calculate_hash_first(m_vm->get(), tempHash, m_job.blob(), job.size());
+						JobResults::submitBBP(data, m_count, rxhash, bbphash, seed, localbbpjob.nDifficulty, MathRound(nDiff1));
 					}
 				}
 
@@ -350,7 +284,10 @@ void xmrig::CpuWorker<N>::start()
 					if (*reinterpret_cast<uint64_t*>(m_hash + (i * 32) + 24) < job.target())
 					{
 						// This dual-hash has solved a RandomX header
-						JobResults::submit(job, current_job_nonces[i], m_hash + (i * 32));
+						double nDiff = FullTest3(m_hash);
+						if (nDiff < 1) 
+							nDiff = 1;  // ToDo: Pass 2 digit rounded double through stdout
+						JobResults::submit(job, current_job_nonces[i], m_hash + (i * 32), MathRound(nDiff));
 					}
 				}
 

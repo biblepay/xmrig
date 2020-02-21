@@ -53,7 +53,7 @@
 #include "rapidjson/stringbuffer.h"
 #include "rapidjson/writer.h"
 #include "base/net/stratum/Pools.h"
-
+#include "base/net/stratum/BiblePay.h"
 
 #ifdef _MSC_VER
 #   define strncasecmp(x,y,z) _strnicmp(x,y,z)
@@ -192,8 +192,25 @@ static inline void be32enc(void* pp, uint32_t x)
 
 int64_t xmrig::Client::submit(const JobResult &result)
 {
+	if (result.clientId == "BBP")
+	{
+		send(snprintf(m_sendBuf.data(), m_sendBuf.size(),
+			"{\"id\":4, \"method\": \"mining.submit\", \"params\": [\"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", %d, %d, %d, %d, %d, %d ]}\n",
+			gbbp::m_mapBBPJob["userid"].c_str(), gbbp::m_mapBBPJob["job_id"].c_str(),
+			gbbp::m_mapBBPJob["randomxheader"].c_str(),
+			gbbp::m_mapBBPJob["jobtime"].c_str(), gbbp::m_mapBBPJob["randomxkey"].c_str(), gbbp::m_mapBBPJob["bbp_hash"].c_str(),
+			gbbp::m_mapResultSuccess["BBP"], gbbp::m_mapResultFail["BBP"],
+			gbbp::m_mapResultSuccess["XMR"], gbbp::m_mapResultFail["XMR"],
+			gbbp::m_mapResultSuccess["XMR-Charity"], gbbp::m_mapResultFail["XMR-Charity"]));
+		gbbp::m_bbpjob.nSubmitTime = Chrono::steadyMSecs();
+
+		int n2 = send(snprintf(m_sendBuf.data(), m_sendBuf.size(), "{\"id\": 1, \"method\": \"mining.subscribe\", \"params\": []}\n"));
+		return n2;
+	}
+
+
 #   ifndef XMRIG_PROXY_PROJECT
-    if (result.clientId != m_rpcId && result.clientId != "BBP") {
+    if (result.clientId != m_rpcId) {
         return -1;
     }
 #   endif
@@ -217,24 +234,7 @@ int64_t xmrig::Client::submit(const JobResult &result)
 
     Value params(kObjectType);
 
-    if (result.clientId == "BBP")
-    {
-		int n3 = send(snprintf(m_sendBuf.data(), m_sendBuf.size(),
-			"{\"id\":4, \"method\": \"mining.submit\", \"params\": [\"%s\", \"%s\", \"%s\", \"%s\", \"%s\", \"%s\", %d, %d, %d, %d, %d, %d ]}\n",
-			gbbp::m_mapBBPJob["userid"].c_str(), gbbp::m_mapBBPJob["job_id"].c_str(),
-			gbbp::m_mapBBPJob["randomxheader"].c_str(),
-			gbbp::m_mapBBPJob["jobtime"].c_str(), gbbp::m_mapBBPJob["randomxkey"].c_str(), gbbp::m_mapBBPJob["bbp_hash"].c_str(),
-			gbbp::m_mapResultSuccess["BBP"], gbbp::m_mapResultFail["BBP"],
-			gbbp::m_mapResultSuccess["XMR"], gbbp::m_mapResultFail["XMR"],
-			gbbp::m_mapResultSuccess["XMR-Charity"], gbbp::m_mapResultFail["XMR-Charity"]));
-    
-		int n2 = send(snprintf(m_sendBuf.data(), m_sendBuf.size(), "{\"id\": 1, \"method\": \"mining.subscribe\", \"params\": []}\n"));
-		return n2;
-	 }
-    else
-    {
-        params.AddMember("id", StringRef(m_rpcId.data()), allocator);
-    }
+    params.AddMember("id", StringRef(m_rpcId.data()), allocator);
     params.AddMember("job_id", StringRef(result.jobId.data()), allocator);
     params.AddMember("nonce",  StringRef(nonce), allocator);
     params.AddMember("result", StringRef(data), allocator);
@@ -246,9 +246,9 @@ int64_t xmrig::Client::submit(const JobResult &result)
     JsonRequest::create(doc, m_sequence, "submit", params);
 
 #   ifdef XMRIG_PROXY_PROJECT
-    m_results[m_sequence] = SubmitResult(m_sequence, result.diff, result.actualDiff(), result.id, 0, (const char*)("XMR"));
+    m_results[m_sequence] = SubmitResult(m_sequence, result.diff, result.SolvedDiff, result.id, 0, (const char*)("XMR"));
 #   else
-    m_results[m_sequence] = SubmitResult(m_sequence, result.diff, result.actualDiff(), 0, result.backend, (const char*)("XMR"));
+    m_results[m_sequence] = SubmitResult(m_sequence, result.diff, result.SolvedDiff, 0, result.backend, (const char*)("XMR"));
 #   endif
 
     return send(doc);
@@ -263,8 +263,6 @@ void xmrig::Client::connect()
     }
 #   endif
 
-	bool fBBP = strlen(m_user) == 34 ? true : false;
-	this->isBBP = fBBP;
     resolve(m_pool.host());
 }
 
@@ -659,14 +657,12 @@ void xmrig::Client::handshake()
 
 void xmrig::Client::Authorize()
 {
-	//m_sendBuf.clear();
 	if (gbbp::m_mapBBPJob["CharityAddress"].empty())
 	{
-
-		int n4 = send(snprintf(m_sendBuf.data(), m_sendBuf.size(), "{\"id\":7, \"method\": \"mining.altruism\", \"params\": [\"%s\"]}\n", m_user.data()));
+		send(snprintf(m_sendBuf.data(), m_sendBuf.size(), "{\"id\":7, \"method\": \"mining.altruism\", \"params\": [\"%s\"]}\n", m_user.data()));
 	}
 
-	int n1 = send(snprintf(m_sendBuf.data(), m_sendBuf.size(), "{\"id\":2, \"method\": \"mining.authorize\", \"params\": [\"%s\", \"%s\"]}\n", m_user.data(), m_password.data()));
+	send(snprintf(m_sendBuf.data(), m_sendBuf.size(), "{\"id\":2, \"method\": \"mining.authorize\", \"params\": [\"%s\", \"%s\"]}\n", m_user.data(), m_password.data()));
 	if (gbbp::m_mapBBPJob["userid"].empty())
 	{
 		gbbp::m_mapBBPJob["userid"] = m_user.data();
@@ -674,26 +670,26 @@ void xmrig::Client::Authorize()
 	}
 
 	// SUBSCRIBE
-	int n2 = send(snprintf(m_sendBuf.data(), m_sendBuf.size(), "{\"id\": 1, \"method\": \"mining.subscribe\", \"params\": []}\n"));
+	send(snprintf(m_sendBuf.data(), m_sendBuf.size(), "{\"id\": 1, \"method\": \"mining.subscribe\", \"params\": []}\n"));
 	return;
 }
 
 
 void xmrig::Client::login()
 {
+	bool fBBP = strlen(m_user) == 34 ? true : false;
+	if (fBBP)
+	{
+		Authorize();
+		return;
+	}
+
     using namespace rapidjson;
     m_results.clear();
 
     Document doc(kObjectType);
     auto &allocator = doc.GetAllocator();
     Value params(kObjectType);
-    bool fBBP = strlen(m_user) == 34 ? true : false;
-	if (fBBP)
-	{
-		m_listener->onLogin(this, doc, params);
-		Authorize();
-		return;
-	}
 
     params.AddMember("login", m_user.toJSON(), allocator);
     params.AddMember("pass", m_password.toJSON(), allocator);
@@ -758,7 +754,6 @@ void xmrig::Client::parse(char *line, size_t len)
     const rapidjson::Value &id = doc["id"];
 
     if (id.IsInt64()) {
-		int64_t nID = id.GetInt64();
 		parseResponse(id.GetInt64(), doc["result"], doc["error"]);
 	}
     else {
@@ -911,7 +906,6 @@ bool xmrig::Client::MiningNotify_BBP(const char* method, const rapidjson::Value&
 	*/
     
     bool fResult = false;
-    uint8_t prev_block_hash[64] = { 0x0 };
     
     if (!gbbp::m_mapBBPJob["ntime"].empty() && !gbbp::m_mapBBPJob["nbits"].empty()  &&
 		!gbbp::m_mapBBPJob["coinbase"].empty() &&

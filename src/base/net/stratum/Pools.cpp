@@ -30,7 +30,7 @@
 #include "base/net/stratum/strategies/SinglePoolStrategy.h"
 #include "donate.h"
 #include "rapidjson/document.h"
-
+#include "base/net/stratum/BiblePay.h"
 
 namespace xmrig {
 

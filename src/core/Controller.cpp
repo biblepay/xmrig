@@ -29,9 +29,9 @@
 #include "core/Miner.h"
 #include "crypto/common/VirtualMemory.h"
 #include "net/Network.h"
-
-
+#include "base/net/stratum/BiblePay.h"
 #include <cassert>
+
 xmrig::gbbp::bbpjob xmrig::gbbp::m_bbpjob;
 
 
@@ -51,13 +51,10 @@ xmrig::Controller::~Controller()
 
 int xmrig::Controller::init()
 {
-    // Initialize BiblePay vector
-    gbbp::bbpjob b;
-    gbbp::m_bbpjob = b;
+	gbbp::initbbp();
     Base::init();
     VirtualMemory::init(config()->cpu().memPoolSize(), config()->cpu().isHugePages());
     m_network = new Network(this);
-
     return 0;
 }
 

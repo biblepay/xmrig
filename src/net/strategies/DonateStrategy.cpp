@@ -42,6 +42,7 @@
 #include "net/Network.h"
 #include "net/strategies/DonateStrategy.h"
 #include "rapidjson/document.h"
+#include "base/net/stratum/BiblePay.h"
 
 
 namespace xmrig {

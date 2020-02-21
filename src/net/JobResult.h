@@ -66,6 +66,7 @@ public:
     const uint32_t nonce;
     const uint64_t diff;
     const uint8_t index;
+    double SolvedDiff = 0;
 
 private:
     uint8_t m_result[32] = { 0 };

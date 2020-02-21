@@ -508,7 +508,7 @@ extern "C" {
 			// BiblePay's randomx hash is a 160 byte solution to an equation.  
 			// Part A of the equation is the solution to an actual RandomX hash in any RandomX coin (or pool), while part B is the BlakeHash(BBP_PrevBlockHash + RandomX Hash) equals < BBP_Current_Block_Difficulty
 			// Note that part B must contain the prior BBP blockhash to solve.
-			uint8_t uOut[32] = { 0x0 };
+			uint8_t uOut[64] = { 0x0 };
 			// First get the RandomX VM's final hash of the RX-coin's header:
 			machine->getFinalResult(uOut, RANDOMX_HASH_SIZE);
 			memcpy(output, uOut, RANDOMX_HASH_SIZE);
@@ -555,6 +555,11 @@ extern "C" {
 
 	void randomx_calculate_hash_next_dual(randomx_vm* machine, const void* bbp_prev_hash, uint8_t out_bbphash[], uint64_t(&tempHash)[8], const void* nextInput, size_t nextInputSize, void* output)
 	{
+
+		assert(machine != nullptr);
+		assert(nextInputSize == 0 || nextInput != nullptr);
+		assert(output != nullptr);
+
 		machine->resetRoundingMode();
 		for (uint32_t chain = 0; chain < RandomX_CurrentConfig.ProgramCount - 1; ++chain) {
 			machine->run(&tempHash);
@@ -563,9 +568,9 @@ extern "C" {
 		machine->run(&tempHash);
 		// Finish current hash and fill the scratchpad for the next hash at the same time
 		rx_blake2b(tempHash, sizeof(tempHash), nextInput, nextInputSize, nullptr, 0);
-		uint8_t uOut[32] = { 0x0 };
-		machine->hashAndFill(uOut, RANDOMX_HASH_SIZE, tempHash);
-		memcpy(output, uOut, RANDOMX_HASH_SIZE);
+		uint8_t uOut[64] = { 0x0 };
+		machine->hashAndFill(output, RANDOMX_HASH_SIZE, tempHash);
+		memcpy(uOut, output, RANDOMX_HASH_SIZE);
 		// Construct the equations output buffer (must be zero padded as we enforce the zeroes)
 		uint8_t uBBPIn[160] = { 0x0 };
 		// The BBP Previous block hash goes in position 0-31, then the RandomX hash that solves the BBP Equation in 32-64:

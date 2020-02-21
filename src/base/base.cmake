@@ -35,6 +35,7 @@ set(HEADERS_BASE
     src/base/net/dns/DnsRecord.h
     src/base/net/http/Http.h
     src/base/net/stratum/BaseClient.h
+    src/base/net/stratum/BiblePay.h
     src/base/net/stratum/Client.h
     src/base/net/stratum/Job.h
     src/base/net/stratum/Pool.h
@@ -77,6 +78,7 @@ set(SOURCES_BASE
     src/base/net/stratum/BaseClient.cpp
     src/base/net/stratum/Client.cpp
     src/base/net/stratum/Job.cpp
+    src/base/net/stratum/BiblePay.cpp
     src/base/net/stratum/Pool.cpp
     src/base/net/stratum/Pools.cpp
     src/base/net/stratum/strategies/FailoverStrategy.cpp
