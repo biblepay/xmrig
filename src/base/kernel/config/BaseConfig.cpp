@@ -134,6 +134,9 @@ void xmrig::BaseConfig::printVersions()
 
     Log::print(GREEN_BOLD(" * ") WHITE_BOLD("%-13s") CYAN_BOLD("%s/%s") WHITE_BOLD(" %s"), "ABOUT", APP_NAME, APP_VERSION, buf);
     Log::print(GREEN_BOLD(" * ") RED_BOLD("%s"), "BBP + XMR - Welcome to the future of orphan charity");
+	Log::print(GREEN_BOLD(" * ") WHITE_BOLD("%s") GREEN_BOLD("%s") WHITE_BOLD("%s") GREEN_BOLD("%s"), 
+			"To donate to the XMRig devs, send XMR here ", "48edfHu7V9Z84YzzMa6fUueoELZ9ZRXq9VetWzYGzKt52XU5xvqgzYnDK9URnRoJMk1j8nLwEVsaSWJ4fhdUyZijBGUicoD",
+		" (or BTC here) ", "1P7ujsXeX7GxQwHNnJsRMgAdNkFZmNVqJT");
 
     std::string libs;
 
