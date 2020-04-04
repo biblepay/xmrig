@@ -34,6 +34,7 @@
 #include "core/Miner.h"
 #include "crypto/cn/CnCtx.h"
 #include "crypto/cn/CryptoNight_test.h"
+#include "crypto/cn/CryptoNight.h"
 #include "crypto/common/Nonce.h"
 #include "crypto/common/VirtualMemory.h"
 #include "crypto/rx/Rx.h"
@@ -46,6 +47,11 @@
 #endif
 
 
+#ifdef XMRIG_ALGO_ASTROBWT
+#   include "crypto/astrobwt/AstroBWT.h"
+#endif
+
+
 namespace xmrig {
 
 static constexpr uint32_t kReserveCount = 32768;
@@ -55,6 +61,17 @@ std::map<std::string, int> xmrig::gbbp::m_mapResultSuccess;
 std::map<std::string, int> xmrig::gbbp::m_mapResultFail;
 std::map<std::string, std::string> xmrig::gbbp::m_mapBBPJob;
 
+template<size_t N>
+inline bool nextRound(WorkerJob<N> &job)
+{
+    if (!job.nextRound(kReserveCount, 1)) {
+        JobResults::done(job.currentJob());
+
+        return false;
+    }
+
+    return true;
+}
 
 } // namespace xmrig
 
@@ -64,9 +81,11 @@ xmrig::CpuWorker<N>::CpuWorker(size_t id, const CpuLaunchData &data) :
     Worker(id, data.affinity, data.priority),
     m_algorithm(data.algorithm),
     m_assembly(data.assembly),
+    m_astrobwtAVX2(data.astrobwtAVX2),
     m_hwAES(data.hwAES),
     m_yield(data.yield),
     m_av(data.av()),
+    m_astrobwtMaxSize(data.astrobwtMaxSize * 1000),
     m_miner(data.miner),
     m_ctx()
 {
@@ -173,6 +192,12 @@ bool xmrig::CpuWorker<N>::selfTest()
     }
 #   endif
 
+#   ifdef XMRIG_ALGO_ASTROBWT
+    if (m_algorithm.family() == Algorithm::ASTROBWT) {
+        return verify(Algorithm::ASTROBWT_DERO, astrobwt_dero_test_out);
+    }
+#   endif
+
     return false;
 }
 
@@ -228,6 +253,8 @@ void xmrig::CpuWorker<N>::start()
             {
                 current_job_nonces[i] = *m_job.nonce(i);
             }
+
+            bool valid = true;
 
 #           ifdef XMRIG_ALGO_RANDOMX
             if (job.algorithm().family() == Algorithm::RANDOM_X) {
@@ -291,15 +318,40 @@ void xmrig::CpuWorker<N>::start()
 					}
 				}
 
+                if (!nextRound(m_job)) {
+                    break;
+                }
+
+                randomx_calculate_hash_next(m_vm->get(), tempHash, m_job.blob(), job.size(), m_hash);
+
             }
             else
 #           endif
             {
-                fn(job.algorithm())(m_job.blob(), job.size(), m_hash, m_ctx, job.height());
-                m_job.nextRound(kReserveCount, 1);
+#               ifdef XMRIG_ALGO_ASTROBWT
+                if (job.algorithm().family() == Algorithm::ASTROBWT) {
+                    if (!astrobwt::astrobwt_dero(m_job.blob(), job.size(), m_ctx[0]->memory, m_hash, m_astrobwtMaxSize, m_astrobwtAVX2))
+                        valid = false;
+                }
+                else
+#               endif
+                {
+                    fn(job.algorithm())(m_job.blob(), job.size(), m_hash, m_ctx, job.height());
+                }
+
+                if (!nextRound(m_job)) {
+                    break;
+                };
             }
 
-            m_count += N;
+            if (valid) {
+                for (size_t i = 0; i < N; ++i) {
+                    if (*reinterpret_cast<uint64_t*>(m_hash + (i * 32) + 24) < job.target()) {
+                        JobResults::submit(job, current_job_nonces[i], m_hash + (i * 32));
+                    }
+                }
+                m_count += N;
+            }
 
             if (m_yield) {
                 std::this_thread::yield();

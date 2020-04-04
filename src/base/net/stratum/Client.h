@@ -5,8 +5,8 @@
  * Copyright 2014-2016 Wolf9466    <https://github.com/OhGodAPet>
  * Copyright 2016      Jay D Dee   <jayddee246@gmail.com>
  * Copyright 2017-2018 XMR-Stak    <https://github.com/fireice-uk>, <https://github.com/psychocrypt>
- * Copyright 2018-2020 SChernykh   <https://github.com/SChernykh>
  * Copyright 2019      jtgrassie   <https://github.com/jtgrassie>
+ * Copyright 2018-2020 SChernykh   <https://github.com/SChernykh>
  * Copyright 2016-2020 XMRig       <https://github.com/xmrig>, <support@xmrig.com>
  *
  *   This program is free software: you can redistribute it and/or modify
@@ -39,17 +39,15 @@
 #include "base/net/stratum/Job.h"
 #include "base/net/stratum/Pool.h"
 #include "base/net/stratum/SubmitResult.h"
-#include "base/net/tools/RecvBuf.h"
+#include "base/net/tools/LineReader.h"
 #include "base/net/tools/Storage.h"
 #include "base/tools/Object.h"
-#include "crypto/common/Algorithm.h"
 
 
 using BIO = struct bio_st;
 
 
 namespace xmrig {
-
 
 
 class IClientListener;
@@ -63,9 +61,8 @@ public:
 
     constexpr static uint64_t kConnectTimeout   = 20 * 1000;
     constexpr static uint64_t kResponseTimeout  = 20 * 1000;
-    constexpr static size_t kInputBufferSize    = 1024 * 16;
     constexpr static size_t kMaxSendBufferSize  = 1024 * 16;
-	bool isBBP = false;
+
     Client(int id, const char *agent, IClientListener *listener);
     ~Client() override;
 
@@ -89,6 +86,7 @@ protected:
     inline void onLine(char *line, size_t size) override                  { parse(line, size); }
 
 private:
+    class Socks5;
     class Tls;
 
     bool close();
@@ -103,19 +101,13 @@ private:
     void connect(sockaddr *addr);
     void handshake();
     void login();
-	void Authorize();
     void onClose();
     void parse(char *line, size_t len);
     void parseExtensions(const rapidjson::Value &result);
     void parseNotification(const char *method, const rapidjson::Value &params, const rapidjson::Value &error);
-    bool MiningNotify_BBP(const char* method, const rapidjson::Value& params);
-    bool MiningSetDifficulty(const char* method, const rapidjson::Value& params);
-    bool MiningSetAltruism(const char* method, const rapidjson::Value& params);
-	void Assign(const rapidjson::Value& params, int num, std::string name);
-	void AssignSmall(const rapidjson::Value& params, int num, std::string name);
     void parseResponse(int64_t id, const rapidjson::Value &result, const rapidjson::Value &error);
     void ping();
-    void read(ssize_t nread);
+    void read(ssize_t nread, const uv_buf_t *buf);
     void reconnect();
     void setState(SocketState state);
     void startTimeout();
@@ -125,7 +117,6 @@ private:
     inline void setExtension(Extension ext, bool enable) noexcept { m_extensions.set(ext, enable); }
     template<Extension ext> inline bool has() const noexcept      { return m_extensions.test(ext); }
 
-    static void onAllocBuffer(uv_handle_t *handle, size_t suggested_size, uv_buf_t *buf);
     static void onClose(uv_handle_t *handle);
     static void onConnect(uv_connect_t *req, int status);
     static void onRead(uv_stream_t *stream, ssize_t nread, const uv_buf_t *buf);
@@ -134,7 +125,8 @@ private:
 
     const char *m_agent;
     Dns *m_dns;
-    RecvBuf<kInputBufferSize> m_recvBuf;
+    LineReader m_reader;
+    Socks5 *m_socks5            = nullptr;
     std::bitset<EXT_MAX> m_extensions;
     std::vector<char> m_sendBuf;
     String m_rpcId;

@@ -24,7 +24,6 @@
 
 
 #include "net/JobResults.h"
-
 #include "base/io/log/Log.h"
 #include "base/tools/Handle.h"
 #include "base/tools/Object.h"
@@ -274,6 +273,11 @@ static JobResultsPrivate *handler = nullptr;
 
 } // namespace xmrig
 
+
+void xmrig::JobResults::done(const Job &job)
+{
+    submit(JobResult(job));
+}
 
 void xmrig::JobResults::setListener(IJobResultListener *listener, bool hwAES)
 {
