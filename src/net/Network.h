@@ -89,7 +89,7 @@ private:
     Controller *m_controller;
     IStrategy *m_donate     = nullptr;
     IStrategy *m_strategy   = nullptr;
-    IStrategy *m_bbpstrategy; = nullptr;
+    IStrategy *m_bbpstrategy = nullptr;
     NetworkState *m_state   = nullptr;
     Timer *m_timer          = nullptr;
 };

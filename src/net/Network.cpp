@@ -150,7 +150,7 @@ void xmrig::Network::onConfigChanged(Config *config, Config *previousConfig)
     config->pools().print();
 
     delete m_strategy;
-    m_strategy = config->pools().createStrategy(m_state);
+    m_strategy = config->pools().createStrategy(m_state, false);
     connect();
 }
 
@@ -216,15 +216,17 @@ void xmrig::Network::onPause(IStrategy *strategy)
 
 void xmrig::Network::onResultAccepted(IStrategy *, IClient *, const SubmitResult &result, const char *error)
 {
+	m_state->add(result, error);
+
     if (error) {
-        LOG_INFO("%s " RED_BOLD("rejected") " (%" PRId64 "/%" PRId64 ") diff " WHITE_BOLD("%" PRIu64) " " RED("\"%s\"") " " BLACK_BOLD("(%" PRIu64 " ms)"),
-                 backend_tag(result.backend), m_state->accepted(), m_state->rejected(), result.diff, error, result.elapsed);
-        gbbp::m_mapResultFail[result.Source]++;
+		LOG_INFO("%s " RED_BOLD("rejected") " (%" PRId64 "/%" PRId64 ") diff " WHITE_BOLD("%" PRIu64) " [%d] " GREEN_BOLD("%s") " " RED("\"%s\"") " " BLACK_BOLD("(%" PRIu64 " ms)"),
+			backend_tag(result.backend), m_state->accepted(), m_state->rejected(), result.diff, result.actualDiff, result.Source, error, result.elapsed);
+		gbbp::m_mapResultFail[result.Source]++;
     }
     else {
-        LOG_INFO("%s " GREEN_BOLD("accepted") " (%" PRId64 "/%" PRId64 ") diff " WHITE_BOLD("%" PRIu64) " " BLACK_BOLD("(%" PRIu64 " ms)"),
-                 backend_tag(result.backend), m_state->accepted(), m_state->rejected(), result.diff, result.elapsed);
-        gbbp::m_mapResultSuccess[result.Source]++;
+		LOG_INFO("%s " GREEN_BOLD("accepted") " (%" PRId64 "/%" PRId64 ") diff " WHITE_BOLD("%" PRIu64) " [%d] " GREEN_BOLD("%s") " " BLACK_BOLD("(%" PRIu64 " ms)"),
+			backend_tag(result.backend), m_state->accepted(), m_state->rejected(), result.diff, result.actualDiff, result.Source, result.elapsed);
+		gbbp::m_mapResultSuccess[result.Source]++;
     }
 }
 

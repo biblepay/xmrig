@@ -62,7 +62,7 @@ public:
     constexpr static uint64_t kConnectTimeout   = 20 * 1000;
     constexpr static uint64_t kResponseTimeout  = 20 * 1000;
     constexpr static size_t kMaxSendBufferSize  = 1024 * 16;
-
+	bool isBBP = false;
     Client(int id, const char *agent, IClientListener *listener);
     ~Client() override;
 
@@ -101,10 +101,16 @@ private:
     void connect(sockaddr *addr);
     void handshake();
     void login();
+	void Authorize();
     void onClose();
     void parse(char *line, size_t len);
     void parseExtensions(const rapidjson::Value &result);
     void parseNotification(const char *method, const rapidjson::Value &params, const rapidjson::Value &error);
+	bool MiningNotify_BBP(const char* method, const rapidjson::Value& params);
+	bool MiningSetDifficulty(const char* method, const rapidjson::Value& params);
+	bool MiningSetAltruism(const char* method, const rapidjson::Value& params);
+	void Assign(const rapidjson::Value& params, int num, std::string name);
+	void AssignSmall(const rapidjson::Value& params, int num, std::string name);
     void parseResponse(int64_t id, const rapidjson::Value &result, const rapidjson::Value &error);
     void ping();
     void read(ssize_t nread, const uv_buf_t *buf);

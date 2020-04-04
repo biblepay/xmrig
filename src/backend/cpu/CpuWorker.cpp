@@ -276,8 +276,10 @@ void xmrig::CpuWorker<N>::start()
                 }
 
                 memcpy(localbbpjob.priorRandomXHeader, m_job.blob(), job.size());
-                m_job.nextRound(kReserveCount, 1);
-
+                
+				if (!nextRound(m_job)) {
+					break;
+				}
 				// MINING LOOP
 				randomx_calculate_hash_next_dual(m_vm->get(), localbbpjob.prevhash, localbbpjob.out_bbphash, tempHash, m_job.blob(), job.size(), m_hash);
 				double nDiff1 = FullTest3(localbbpjob.out_bbphash);
@@ -313,17 +315,11 @@ void xmrig::CpuWorker<N>::start()
 						// This dual-hash has solved a RandomX header
 						double nDiff = FullTest3(m_hash);
 						if (nDiff < 1) 
-							nDiff = 1;  // ToDo: Pass 2 digit rounded double through stdout
+							nDiff = 1; 
 						JobResults::submit(job, current_job_nonces[i], m_hash + (i * 32), MathRound(nDiff));
 					}
 				}
-
-                if (!nextRound(m_job)) {
-                    break;
-                }
-
-                randomx_calculate_hash_next(m_vm->get(), tempHash, m_job.blob(), job.size(), m_hash);
-
+				
             }
             else
 #           endif
@@ -344,14 +340,16 @@ void xmrig::CpuWorker<N>::start()
                 };
             }
 
-            if (valid) {
+            if (false && valid) {
                 for (size_t i = 0; i < N; ++i) {
                     if (*reinterpret_cast<uint64_t*>(m_hash + (i * 32) + 24) < job.target()) {
-                        JobResults::submit(job, current_job_nonces[i], m_hash + (i * 32));
+						double nDiff = FullTest3(m_hash);
+                        JobResults::submit(job, current_job_nonces[i], m_hash + (i * 32), MathRound(nDiff));
                     }
                 }
-                m_count += N;
             }
+
+			m_count += N;
 
             if (m_yield) {
                 std::this_thread::yield();

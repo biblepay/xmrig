@@ -121,9 +121,9 @@ int64_t xmrig::DaemonClient::submit(const JobResult &result)
     JsonRequest::create(doc, m_sequence, "submitblock", params);
 
 #   ifdef XMRIG_PROXY_PROJECT
-    m_results[m_sequence] = SubmitResult(m_sequence, result.diff, result.actualDiff(), result.id, 0, "XMR");
+    m_results[m_sequence] = SubmitResult(m_sequence, result.diff, result.actualDiff(), result.id, 0, (const char*)"XMR");
 #   else
-    m_results[m_sequence] = SubmitResult(m_sequence, result.diff, result.actualDiff(), 0, result.backend, "XMR");
+    m_results[m_sequence] = SubmitResult(m_sequence, result.diff, result.actualDiff(), 0, result.backend, (const char*)"XMR");
 #   endif
 
     return rpcSend(doc);

@@ -46,6 +46,7 @@ public:
     inline const Algorithm &algorithm() const   { return m_algorithm; }
     inline uint64_t accepted() const            { return m_accepted; }
     inline uint64_t rejected() const            { return m_rejected; }
+	void add(const SubmitResult &result, const char *error);
 
 #   ifdef XMRIG_FEATURE_API
     rapidjson::Value getConnection(rapidjson::Document &doc, int version) const;
@@ -62,7 +63,6 @@ private:
     uint32_t avgTime() const;
     uint32_t latency() const;
     uint64_t connectionTime() const;
-    void add(const SubmitResult &result, const char *error);
     void stop();
 
     Algorithm m_algorithm;
