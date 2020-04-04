@@ -28,15 +28,15 @@
 #define APP_ID        "bbprig"
 #define APP_NAME      "bbprig"
 #define APP_DESC      "BBRig orphan-miner"
-#define APP_VERSION   "5.6.3"
+#define APP_VERSION   "5.10.0"
 #define APP_DOMAIN    "www.biblepay.org"
 #define APP_SITE      "www.biblepay.org"
 #define APP_COPYRIGHT "Copyright (C) 2016-2020 www.biblepay.org"
 #define APP_KIND      "orphan-miner"
 
 #define APP_VER_MAJOR  5
-#define APP_VER_MINOR  6
-#define APP_VER_PATCH  3
+#define APP_VER_MINOR  10
+#define APP_VER_PATCH  0
 
 #ifdef _MSC_VER
 #   if (_MSC_VER >= 1920)

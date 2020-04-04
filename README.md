@@ -1,7 +1,5 @@
 # XMRig
 
-**:warning: [Monero changed PoW algorithm to RandomX on November 30.](https://github.com/xmrig/xmrig/issues/1204)**
-
 [![Github All Releases](https://img.shields.io/github/downloads/xmrig/xmrig/total.svg)](https://github.com/xmrig/xmrig/releases)
 [![GitHub release](https://img.shields.io/github/release/xmrig/xmrig/all.svg)](https://github.com/xmrig/xmrig/releases)
 [![GitHub Release Date](https://img.shields.io/github/release-date-pre/xmrig/xmrig.svg)](https://github.com/xmrig/xmrig/releases)
@@ -9,7 +7,7 @@
 [![GitHub stars](https://img.shields.io/github/stars/xmrig/xmrig.svg)](https://github.com/xmrig/xmrig/stargazers)
 [![GitHub forks](https://img.shields.io/github/forks/xmrig/xmrig.svg)](https://github.com/xmrig/xmrig/network)
 
-XMRig High performance, open source, cross platform RandomX, CryptoNight and Argon2 CPU/GPU miner, with official support for Windows.
+XMRig High performance, open source, cross platform RandomX, CryptoNight, AstroBWT and Argon2 CPU/GPU miner, with official support for Windows.
 
 ## Mining backends
 - **CPU** (x64/x86/ARM)
@@ -38,6 +36,7 @@ Network:
   -u, --user=USERNAME           username for mining server
   -p, --pass=PASSWORD           password for mining server
   -O, --userpass=U:P            username:password pair for mining server
+  -x, --proxy=HOST:PORT         connect through a SOCKS5 proxy
   -k, --keepalive               send keepalive packet for prevent timeout (needs pool support)
       --nicehash                enable nicehash.com support
       --rig-id=ID               rig identifier for pool-side statistics (needs pool support)
@@ -68,6 +67,8 @@ CPU backend:
       --randomx-1gb-pages       use 1GB hugepages for dataset (Linux only)
       --randomx-wrmsr=N         write custom value (0-15) to Intel MSR register 0x1a4 or disable MSR mod (-1)
       --randomx-no-rdmsr        disable reverting initial MSR values on exit
+      --astrobwt-max-size=N     skip hashes with large stage 2 size, default: 550, min: 400, max: 1200
+      --astrobwt-avx2           enable AVX2 optimizations for AstroBWT algorithm
 
 API:
       --api-worker-id=ID        custom worker-id for API
@@ -92,6 +93,15 @@ CUDA backend:
       --cuda-bfactor-hint=N     bfactor hint for autoconfig (0-12)
       --cuda-bsleep-hint=N      bsleep hint for autoconfig
       --no-nvml                 disable NVML (NVIDIA Management Library) support
+
+TLS:
+      --tls-gen=HOSTNAME        generate TLS certificate for specific hostname
+      --tls-cert=FILE           load TLS certificate chain from a file in the PEM format
+      --tls-cert-key=FILE       load TLS certificate private key from a file in the PEM format
+      --tls-dhparam=FILE        load DH parameters for DHE ciphers from a file in the PEM format
+      --tls-protocols=N         enable specified TLS protocols, example: "TLSv1 TLSv1.1 TLSv1.2 TLSv1.3"
+      --tls-ciphers=S           set list of available ciphers (TLSv1.2 and below)
+      --tls-ciphersuites=S      set list of available TLSv1.3 ciphersuites
 
 Logging:
   -S, --syslog                  use system log for output messages
