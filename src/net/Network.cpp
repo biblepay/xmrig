@@ -290,7 +290,8 @@ void xmrig::Network::tick()
         delete m_strategy;
         m_strategy = pools.createStrategy(this, false);
         m_strategy->connect();
-        m_donate = new DonateStrategy(m_controller, this);
+        if (false)
+			m_donate = new DonateStrategy(m_controller, this);
         gbbp::m_bbpjob.fCharityInitialized = false;
     }
 

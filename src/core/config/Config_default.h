@@ -82,7 +82,7 @@ R"===(
         "cn/0": false,
         "cn-lite/0": false
     },
-    "donate-level": 5,
+    "donate-level": 0,
     "donate-over-proxy": 1,
     "log-file": null,
     "pools": [
